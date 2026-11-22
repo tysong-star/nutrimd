@@ -9,7 +9,7 @@ Aplicație web (PWA) de nutriție și mâncare sănătoasă pentru Republica Mol
 ```bash
 npm install
 npm run dev        # http://localhost:3000
-npm run build && npm start   # producție (service worker activ)
+npm run build      # site static în out/ (se poate pune pe GitHub Pages, Netlify etc.)
 ```
 
 Fără configurare suplimentară aplicația rulează în **mod demo**: toate datele (profil, plan, jurnal, modificări admin) se salvează local, în browser.
@@ -37,14 +37,13 @@ src/
     onboarding/           # wizard în 7 pași + consimțământ GDPR
     profile/              # toate setările, aspect, export/ștergere date
     recipes/              # listă, căutare, filtre, „din frigider”
-    recipes/[id]/         # detaliu rețetă: porții, substituții, video, pași, recenzii
-    recipes/[id]/cook/    # mod gătit (wake lock, swipe, cronometre)
+    recipe/               # detaliu rețetă (?id=…): porții, substituții, video, pași, recenzii
+    recipe/cook/          # mod gătit (wake lock, swipe, cronometre)
     plan/                 # planificator zi/săptămână, drag & drop, meal prep, buget
     shopping/             # listă pe raioane, comparator magazine, coș mixt, hartă, partajare, PDF
     shopping/shared/      # listă deschisă dintr-un link partajat
     progress/             # jurnal, scanare cod de bare, grafice, apă, fitness, remindere
     admin/                # rețete, produse, magazine, import, asociere, recenzii, statistici
-    api/import/           # import pe server al feed-urilor de prețuri
     privacy/              # politica de confidențialitate (șablon)
   components/             # UI reutilizabil (ui.tsx, viz.tsx, RecipeCard, Timer, VideoPlayer…)
   data/                   # date demo: 100+ ingrediente, 40 de rețete, 5 magazine, ~800 de produse
@@ -69,6 +68,12 @@ supabase/schema.sql       # tabele, RLS, istoric prețuri, view statistici
 - **Post ortodox**: zilele de post (miercuri/vineri, Postul Mare, al Apostolilor, al Adormirii, al Crăciunului și zilele unice) sunt marcate în calendar. Dacă dieta e „post ortodox”, în aceste zile planul folosește doar rețete de post, iar în zilele cu dezlegare acceptă și pește.
 - **Coș de cumpărături**: produsele la cântar se plătesc la cantitatea exactă, cele ambalate pe pachete întregi. Comparatorul evaluează produsele lipsă dintr-un magazin la cel mai bun preț din alt magazin (+ costul unui drum suplimentar), ca să nu recomande un magazin „ieftin” doar pentru că îi lipsesc produse.
 
+## Publicare (GitHub Pages)
+
+Aplicația se compilează ca site static (`output: "export"`). Workflow-ul `.github/workflows/deploy.yml` o publică automat pe GitHub Pages la fiecare push pe `main`, la adresa `https://<utilizator>.github.io/<repository>/`. În repository: Settings → Pages → Source: **GitHub Actions**.
+
+Linkul de conectare la Google Sheets are forma `https://…/#connect=<base64(JSON {u, t})>`: deschis o dată pe telefon, salvează URL-ul scriptului și codul secret. Partea după `#` nu ajunge la server și e ștearsă din bara de adrese imediat.
+
 ## Google Sheets (uz personal)
 
 Pentru folosire în doi, fără server: un Google Sheet + Apps Script (`google-apps-script/Code.gs`) ține **prețurile reale** (editate în tabel), **lista de cumpărături comună** și **cheltuielile**. Configurare pas cu pas: [GHID-GOOGLE-SHEETS.md](GHID-GOOGLE-SHEETS.md). În aplicație: Profil → Google Sheets.
@@ -80,7 +85,7 @@ Prețurile actuale sunt **date demo generate** (marcate „date demo” în inte
 Toate sursele produc același format normalizat (`ImportRow`) și se potrivesc după **magazin + EAN**:
 
 1. **API oficial** (dacă rețeaua oferă unul): implementezi un `PriceSource` care întoarce `ImportRow[]` și îl apelezi din `/api/import` sau dintr-un cron.
-2. **Feed CSV/XML de la parteneri**: `POST /api/import` cu `{ storeId, format, url }`. Cu `SUPABASE_SERVICE_ROLE_KEY` setată, face upsert în `store_products`; altfel face doar validare (dry run). Endpoint-ul se protejează cu headerul `x-import-token` (`IMPORT_TOKEN`).
+2. **Feed CSV/XML de la parteneri**: `POST /api/import` (fișierul `server-optional/import-route.ts`; se mută înapoi în `src/app/api/import/route.ts` doar dacă renunțați la build-ul static și rulați un server Node) cu `{ storeId, format, url }`. Cu `SUPABASE_SERVICE_ROLE_KEY` setată, face upsert în `store_products`; altfel face doar validare (dry run). Endpoint-ul se protejează cu headerul `x-import-token` (`IMPORT_TOKEN`).
 3. **Panoul Admin**: Admin → Import (lipire sau încărcare fișier, validare, previzualizare, aplicare, jurnal), Admin → Produse (editare preț, promoție, stoc), Admin → Asociere ingredient–produs.
 
 Format CSV: `store_id,ean,ingredient_id,name,brand,pack_size,pack_label,price,promo_price,promo_until,in_stock,image[,by_weight]`
