@@ -10,6 +10,8 @@ import { isoDate } from "@/lib/planner";
 import type { Allergen, Cuisine, Diet, MealType } from "@/lib/types";
 import { ProductPhoto, RecipeCard } from "@/components/RecipeCard";
 import { IconFilter, IconSearch } from "@/components/icons";
+import { Nr1Cards } from "@/components/Nr1Cards";
+import { useNr1 } from "@/lib/nr1";
 import { Button, Chip, EmptyState, Field, IconButton, Input, Modal, PageHeader, Segmented, Select, Toggle, cx } from "@/components/ui";
 import { ALLERGENS, CUISINES, DIETS } from "@/components/ProfileSections";
 
@@ -21,6 +23,7 @@ function RecipesInner() {
   const { t, l } = useT();
   const params = useSearchParams();
   const catalog = useCatalog();
+  const nr1 = useNr1();
   const profile = useApp((s) => s.profile);
   const favorites = useApp((s) => s.favorites);
   const [q, setQ] = useState("");
@@ -124,6 +127,13 @@ function RecipesInner() {
               ) : undefined} />
           ))}
         </div>
+      )}
+
+      {mode === "all" && !q && nr1 && nr1.recipes.length > 0 && (
+        <section className="mt-10">
+          <h2 className="mb-3 px-1 text-[22px] font-bold tracking-tight">{t("nr1.recipes")}</h2>
+          <Nr1Cards items={nr1.recipes} width="w-44 md:w-52" />
+        </section>
       )}
 
       <Modal open={showFilters} onClose={() => setShowFilters(false)} title={t("rec.filters")}>

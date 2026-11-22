@@ -5,6 +5,9 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # Zilnic la ~07:17 (ora Chișinăului): reîmprospătează ofertele și magazinele Nr1.
+  schedule:
+    - cron: "17 4 * * *"
 
 permissions:
   contents: read
@@ -25,6 +28,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Oferte, broșuri, rețete și magazine de pe nr1.md (dacă site-ul nu răspunde, se păstrează versiunea anterioară)
+      - run: node scripts/fetch-nr1.mjs
       - run: npm run build
         env:
           # Site-ul e servit din subfolderul /<nume-repository>

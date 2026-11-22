@@ -15,6 +15,8 @@ import { cookHref, recipeHref } from "@/lib/paths";
 import { RecipeCard, RecipeImage } from "@/components/RecipeCard";
 import { Button, Card, ListGroup, ListRow, PageHeader, SectionTitle } from "@/components/ui";
 import { IconCart, IconChart } from "@/components/icons";
+import { Nr1Cards } from "@/components/Nr1Cards";
+import { useNr1 } from "@/lib/nr1";
 
 const SLOT_HOURS: Record<string, number> = { breakfast: 10, snack1: 12, lunch: 15, snack2: 17, dinner: 21, snack3: 23 };
 
@@ -33,6 +35,7 @@ export default function Home() {
   const router = useRouter();
   const catalog = useCatalog();
   const { profile, plan, journal, water, shoppingExtras, set } = useApp();
+  const nr1 = useNr1();
   const targets = calcTargets(profile);
   const today = isoDate(new Date());
 
@@ -115,6 +118,13 @@ export default function Home() {
           title={t("macro.water")} subtitle={`${water[today] ?? 0} / ${targets.waterMl} ml`}
           right={<Button size="sm" variant="secondary" onClick={() => set({ water: { ...water, [today]: (water[today] ?? 0) + 250 } })}>+250 ml</Button>} />
       </ListGroup>
+
+      {nr1 && (nr1.offers.length > 0 || nr1.booklets.length > 0) && (
+        <>
+          <SectionTitle action={<a href="https://nr1.md/ro/super-deals/" target="_blank" rel="noreferrer" className="text-[17px] text-brand-700 dark:text-brand-400">{t("home.seeAll")}</a>}>{t("nr1.offers")}</SectionTitle>
+          <Nr1Cards items={[...nr1.booklets.slice(0, 1), ...nr1.offers.slice(0, 3)]} aspect="aspect-[3/4]" width="w-36 md:w-44" />
+        </>
+      )}
 
       <SectionTitle action={<Link href="/recipes" className="text-[17px] text-brand-700 dark:text-brand-400">{t("home.seeAll")}</Link>}>{t("home.forYou")}</SectionTitle>
       <div className="scrollbar-none -mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 md:mx-0 md:px-0">

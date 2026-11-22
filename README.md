@@ -74,6 +74,14 @@ Aplicația se compilează ca site static (`output: "export"`). Workflow-ul `.git
 
 Linkul de conectare la Google Sheets are forma `https://…/#connect=<base64(JSON {u, t})>`: deschis o dată pe telefon, salvează URL-ul scriptului și codul secret. Partea după `#` nu ajunge la server și e ștearsă din bara de adrese imediat.
 
+## Date de pe nr1.md
+
+`scripts/fetch-nr1.mjs` rulează zilnic în GitHub Actions și preia de pe nr1.md: adresele, programul și coordonatele magazinelor, ofertele, broșura de promoții și lista de rețete. În aplicație ele apar ca link-uri cu imagine de previzualizare. Textul rețetelor și imaginile rămân pe site-ul Nr1; nu sunt copiate.
+
+Ce nu se poate prelua:
+- **Prețurile Nr1** apar doar în imaginile ofertelor și broșurilor, nu ca text.
+- **linella.md** e protejat de Cloudflare împotriva accesului automat, iar protecția nu este ocolită.
+
 ## Google Sheets (uz personal)
 
 Pentru folosire în doi, fără server: un Google Sheet + Apps Script (`google-apps-script/Code.gs`) ține **prețurile reale** (editate în tabel), **lista de cumpărături comună** și **cheltuielile**. Configurare pas cu pas: [GHID-GOOGLE-SHEETS.md](GHID-GOOGLE-SHEETS.md). În aplicație: Profil → Google Sheets.

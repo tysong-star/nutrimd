@@ -444,6 +444,10 @@ const D = {
   "shop.where": ["Unde cumperi", "Где покупать"],
   "shop.stores": ["Magazine", "Магазины"],
   "common.done": ["Gata", "Готово"],
+  "nr1.offers": ["Oferte Nr1", "Акции Nr1"],
+  "nr1.recipes": ["Rețete de la Nr1", "Рецепты от Nr1"],
+  "nr1.realShops": ["Adrese reale de pe nr1.md", "Реальные адреса с nr1.md"],
+  "nr1.open": ["Deschide pe nr1.md", "Открыть на nr1.md"],
   "pwa.install": ["Instalează aplicația", "Установить приложение"],
 } satisfies Record<string, [string, string]>;
 
