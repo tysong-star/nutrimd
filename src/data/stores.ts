@@ -13,6 +13,8 @@ export const STORES: Store[] = [
   { id: "metro", name: "Metro Cash & Carry", color: "#1e3a8a", onlineUrl: "https://metro.md", deliveryUrl: "https://metro.md", cities: ["Chișinău", "Bălți"], priceFactor: 0.91, source: "demo" },
   { id: "fidesco", name: "Fidesco", color: "#ea580c", onlineUrl: "https://fidesco.md", cities: ["Chișinău", "Bălți", "Cahul", "Comrat"], priceFactor: 1.03, source: "demo" },
   { id: "greenhills", name: "Green Hills", color: "#16a34a", onlineUrl: "https://greenhills.md", cities: ["Chișinău"], priceFactor: 1.09, source: "demo" },
+  // Fără prețuri demo: produsele Kaufland vin doar din tabelul Google (prețuri reale).
+  { id: "kaufland", name: "Kaufland", color: "#e10915", cities: ["Chișinău"], priceFactor: 1, source: "feed" },
 ];
 
 export const CITIES: { name: string; lat: number; lng: number }[] = [
@@ -26,7 +28,7 @@ export const CITIES: { name: string; lat: number; lng: number }[] = [
 ];
 
 /** Puncte DEMO (coordonate aproximative generate în jurul centrului orașului). */
-export const STORE_LOCATIONS: StoreLocation[] = STORES.flatMap((store) =>
+export const STORE_LOCATIONS: StoreLocation[] = STORES.filter((s) => s.source === "demo").flatMap((store) =>
   store.cities.flatMap((city) => {
     const c = CITIES.find((x) => x.name === city)!;
     const rand = rng(`${store.id}-${city}`);
@@ -90,7 +92,7 @@ function ean13(seed: string): string {
 
 const BASE_DATE = new Date("2026-11-20T08:00:00Z");
 
-export function generateDemoProducts(stores: Store[] = STORES): Product[] {
+export function generateDemoProducts(stores: Store[] = STORES.filter((s) => s.source === "demo")): Product[] {
   const out: Product[] = [];
   for (const store of stores) {
     for (const ing of INGREDIENTS) {
