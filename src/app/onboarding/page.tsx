@@ -50,16 +50,16 @@ export default function Onboarding() {
         <span className="text-lg font-extrabold text-brand-700 dark:text-brand-300">🥗 NutriMD</span>
         <LangSwitch />
       </div>
-      <div className="mb-2 text-sm font-semibold text-slate-500">{t("ob.step", { n: step + 1, total })}</div>
-      <div className="mb-6 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800" role="progressbar" aria-valuenow={step + 1} aria-valuemax={total}>
-        <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${((step + 1) / total) * 100}%` }} />
+      <div className="mb-2 text-sm font-semibold text-ink-2">{t("ob.step", { n: step + 1, total })}</div>
+      <div className="mb-6 h-2 overflow-hidden rounded-full bg-black/[0.05] dark:bg-white/10" role="progressbar" aria-valuenow={step + 1} aria-valuemax={total}>
+        <div className="h-full rounded-full bg-brand-500/100 transition-all" style={{ width: `${((step + 1) / total) * 100}%` }} />
       </div>
       <h1 className="mb-1 text-2xl font-extrabold tracking-tight">{last ? t("ob.consent") : t(STEPS[step].key)}</h1>
-      {step === 0 && <p className="mb-6 text-slate-600 dark:text-slate-400">{t("ob.title")}</p>}
+      {step === 0 && <p className="mb-6 text-ink-2 dark:text-[#98989d]">{t("ob.title")}</p>}
       <Card className="mt-4">
         {Current ? <Current /> : (
           <div className="space-y-4">
-            <label className="flex cursor-pointer gap-3 rounded-xl bg-slate-50 p-4 dark:bg-slate-800">
+            <label className="flex cursor-pointer gap-3 rounded-xl bg-slate-50 p-4 dark:bg-white/10">
               <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1 h-5 w-5 shrink-0 accent-brand-600" />
               <span className="text-sm">{t("ob.consentText")} <Link href="/privacy" className="font-semibold text-brand-700 underline dark:text-brand-300">{t("prof.privacy")}</Link></span>
             </label>
@@ -67,7 +67,7 @@ export default function Onboarding() {
           </div>
         )}
       </Card>
-      <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white/95 p-4 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
+      <div className="fixed inset-x-0 bottom-0 border-t border-black/[0.06] bg-white/95 p-4 backdrop-blur dark:border-white/10 dark:bg-[#1c1c1e]/95">
         <div className="mx-auto flex max-w-2xl gap-3">
           {step > 0 && <Button variant="ghost" size="lg" onClick={() => setStep(step - 1)}>{t("common.back")}</Button>}
           {last

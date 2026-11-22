@@ -34,9 +34,9 @@ export default function Privacy() {
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <h1 className="text-2xl font-extrabold">{t("prof.privacy")}</h1>
-      <p className="text-sm text-slate-500">{lang === "ro" ? "Șablon — de revizuit juridic înainte de lansare. Ultima actualizare: 22.11.2026" : "Шаблон — требует юридической проверки перед запуском. Обновлено: 22.11.2026"}</p>
+      <p className="text-sm text-ink-2">{lang === "ro" ? "Șablon — de revizuit juridic înainte de lansare. Ultima actualizare: 22.11.2026" : "Шаблон — требует юридической проверки перед запуском. Обновлено: 22.11.2026"}</p>
       {items.map(([h, p]) => (
-        <Card key={h}><h2 className="mb-1 font-bold">{h}</h2><p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">{p}</p></Card>
+        <Card key={h}><h2 className="mb-1 font-bold">{h}</h2><p className="text-sm leading-relaxed text-ink dark:text-white">{p}</p></Card>
       ))}
     </div>
   );

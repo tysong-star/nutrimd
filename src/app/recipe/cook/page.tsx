@@ -52,7 +52,7 @@ function CookMode() {
   const step = i >= 0 ? recipe.steps[i] : null;
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-white dark:bg-slate-950"
+    <div className="flex min-h-[100dvh] flex-col bg-white dark:bg-[#1c1c1e]"
       onTouchStart={(e) => (touch.current = e.touches[0].clientX)}
       onTouchEnd={(e) => {
         if (touch.current === null) return;
@@ -61,14 +61,14 @@ function CookMode() {
         if (dx > 60) setI((x) => Math.max(-1, x - 1));
         touch.current = null;
       }}>
-      <header className="flex items-center gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-        <Link href={recipeHref(id)} className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-xl dark:bg-slate-800" aria-label={t("common.close")}>✕</Link>
+      <header className="flex items-center gap-3 border-b border-black/[0.06] px-4 py-3 dark:border-white/10">
+        <Link href={recipeHref(id)} className="flex h-12 w-12 items-center justify-center rounded-full bg-black/[0.05] text-xl dark:bg-white/10" aria-label={t("common.close")}>✕</Link>
         <div className="min-w-0 flex-1">
           <div className="truncate font-bold">{l(recipe.title)}</div>
-          <div className="text-xs text-slate-500">{i >= 0 ? t("rec.stepOf", { n: i + 1, total }) : t("rec.ingredients")}{wake && ` · 💡 ${t("rec.wakeLock")}`}</div>
+          <div className="text-xs text-ink-2">{i >= 0 ? t("rec.stepOf", { n: i + 1, total }) : t("rec.ingredients")}{wake && ` · 💡 ${t("rec.wakeLock")}`}</div>
         </div>
       </header>
-      <div className="h-1.5 bg-slate-100 dark:bg-slate-800"><div className="h-full bg-brand-500 transition-all" style={{ width: `${((i + 1) / total) * 100}%` }} /></div>
+      <div className="h-1.5 bg-black/[0.05] dark:bg-white/10"><div className="h-full bg-brand-500/100 transition-all" style={{ width: `${((i + 1) / total) * 100}%` }} /></div>
 
       <section className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-5 py-6" aria-live="polite">
         {step ? (
@@ -88,7 +88,7 @@ function CookMode() {
             {recipe.ingredients.map((ri) => {
               const ing = catalog.ingMap[ri.id];
               return ing && (
-                <li key={ri.id} className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4 dark:bg-slate-900">
+                <li key={ri.id} className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4 dark:bg-[#1c1c1e]">
                   <span className="text-3xl" aria-hidden>{ing.emoji}</span>
                   <span className="flex-1">{l(ing.name)}</span>
                   <b className="tabular-nums">{formatAmount(ri.amount, ing.unit, lang)}</b>
@@ -99,9 +99,9 @@ function CookMode() {
         )}
       </section>
 
-      <nav className="sticky bottom-0 grid grid-cols-2 gap-3 border-t border-slate-200 bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] dark:border-slate-800 dark:bg-slate-950">
+      <nav className="sticky bottom-0 grid grid-cols-2 gap-3 border-t border-black/[0.06] bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] dark:border-white/10 dark:bg-[#1c1c1e]">
         <button onClick={() => setI(Math.max(-1, i - 1))} disabled={i === -1}
-          className="min-h-[72px] rounded-2xl bg-slate-100 text-xl font-bold disabled:opacity-40 dark:bg-slate-800">← {t("common.back")}</button>
+          className="min-h-[72px] rounded-2xl bg-black/[0.05] text-xl font-bold disabled:opacity-40 dark:bg-white/10">← {t("common.back")}</button>
         {i < total - 1 ? (
           <button onClick={() => setI(i + 1)} className="min-h-[72px] rounded-2xl bg-brand-600 text-xl font-bold text-white">{t("common.next")} →</button>
         ) : (

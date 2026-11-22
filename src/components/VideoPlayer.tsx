@@ -71,7 +71,7 @@ export function VideoPlayer({ video, steps, activeStep, onChapter }: { video: No
           <ol className="space-y-1">
             {video.chapters.map((c) => (
               <li key={c.stepIndex}>
-                <button onClick={() => seek(c.startSec, c.stepIndex)} className={cx("flex min-h-[40px] w-full items-center gap-3 rounded-lg px-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800", activeStep === c.stepIndex && "bg-brand-50 font-semibold dark:bg-brand-900/40")}>
+                <button onClick={() => seek(c.startSec, c.stepIndex)} className={cx("flex min-h-[40px] w-full items-center gap-3 rounded-lg px-2 text-left text-sm hover:bg-black/[0.05] dark:hover:bg-white/10", activeStep === c.stepIndex && "bg-brand-500/10 font-semibold dark:bg-brand-900/40")}>
                   <span className="font-mono text-brand-700 dark:text-brand-300">{fmt(c.startSec)}</span>
                   <span className="line-clamp-1">{c.stepIndex + 1}. {l(steps[c.stepIndex]?.text)}</span>
                 </button>

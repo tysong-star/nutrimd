@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode, type SVGProps } from "react";
+import { IconBook, IconCalendar, IconCart, IconHome, IconPerson } from "./icons";
 import { useApp } from "@/lib/store";
 import { useT, type TKey } from "@/lib/i18n";
 import { cx, Skeleton } from "./ui";
@@ -10,13 +11,13 @@ import { asset } from "@/lib/paths";
 import { sheetsReady, syncPrices } from "@/lib/sheets";
 import { buildCatalog } from "@/lib/catalog";
 
-const NAV: { href: string; key: TKey; icon: string }[] = [
-  { href: "/", key: "nav.home", icon: "🏠" },
-  { href: "/plan", key: "nav.plan", icon: "📅" },
-  { href: "/recipes", key: "nav.recipes", icon: "🍲" },
-  { href: "/shopping", key: "nav.shopping", icon: "🛒" },
-  { href: "/progress", key: "nav.progress", icon: "📈" },
-  { href: "/profile", key: "nav.profile", icon: "👤" },
+// 5 tab-uri, ca în aplicațiile iOS. „Progres” se deschide din Acasă.
+const NAV: { href: string; key: TKey; Icon: (p: SVGProps<SVGSVGElement>) => React.ReactElement }[] = [
+  { href: "/", key: "nav.home", Icon: IconHome },
+  { href: "/plan", key: "nav.plan", Icon: IconCalendar },
+  { href: "/recipes", key: "nav.recipes", Icon: IconBook },
+  { href: "/shopping", key: "nav.shopping", Icon: IconCart },
+  { href: "/profile", key: "nav.profile", Icon: IconPerson },
 ];
 
 /** Așteaptă rehidratarea stării din localStorage ca să evităm diferențe SSR/client. */
@@ -122,26 +123,14 @@ export function LangSwitch() {
   const lang = useApp((s) => s.lang);
   const set = useApp((s) => s.set);
   return (
-    <div className="flex rounded-full border border-slate-300 p-0.5 text-xs font-bold dark:border-slate-700" role="group" aria-label="Limba / Язык">
+    <div className="flex rounded-[10px] bg-black/[0.06] p-0.5 text-[13px] font-semibold dark:bg-white/10" role="group" aria-label="Limba / Язык">
       {(["ro", "ru"] as const).map((l) => (
         <button key={l} onClick={() => set({ lang: l })} aria-pressed={lang === l}
-          className={cx("min-h-[32px] min-w-[40px] rounded-full px-2 uppercase", lang === l ? "bg-brand-600 text-white" : "text-slate-600 dark:text-slate-300")}>
+          className={cx("min-h-[30px] min-w-[44px] rounded-[8px] px-2 uppercase", lang === l ? "bg-white shadow-sm dark:bg-[#636366]" : "text-ink-2")}>
           {l}
         </button>
       ))}
     </div>
-  );
-}
-
-function ThemeButton() {
-  const theme = useApp((s) => s.theme);
-  const set = useApp((s) => s.set);
-  const next = theme === "light" ? "dark" : theme === "dark" ? "system" : "light";
-  const icon = theme === "light" ? "☀️" : theme === "dark" ? "🌙" : "🖥️";
-  return (
-    <button onClick={() => set({ theme: next })} className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800" aria-label={`Theme: ${theme}`} title={theme}>
-      <span aria-hidden>{icon}</span>
-    </button>
   );
 }
 
@@ -157,54 +146,45 @@ export default function AppShell({ children }: { children: ReactNode }) {
   useConnectLink();
   useSheetsAutoSync();
   const immersive = pathname.includes("/cook") || pathname.startsWith("/onboarding");
-  const active = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href) || (href === "/recipes" && pathname.startsWith("/recipe")));
+  const active = (href: string) => (href === "/" ? pathname === "/" || pathname.startsWith("/progress") : pathname.startsWith(href) || (href === "/recipes" && pathname.startsWith("/recipe")));
 
   return (
     <>
       <ThemeAndScale />
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded-lg focus:bg-white focus:p-2">Skip</a>
       {!immersive && (
-        <header className="no-print sticky top-0 z-30 border-b border-slate-200/70 bg-white/85 backdrop-blur dark:border-slate-800 dark:bg-slate-950/85">
-          <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4">
-            <Link href="/" className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-brand-700 dark:text-brand-300">
-              <span aria-hidden className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-600 text-white">🥗</span>
-              {t("app.name")}
-            </Link>
-            <nav className="ml-6 hidden gap-1 md:flex" aria-label="Main">
+        <header className="no-print sticky top-0 z-30 hidden border-b border-black/[0.06] bg-surface/80 backdrop-blur-xl dark:border-white/10 dark:bg-black/70 md:block">
+          <div className="mx-auto flex h-14 max-w-5xl items-center gap-6 px-6">
+            <Link href="/" className="text-[17px] font-semibold tracking-tight">NutriMD</Link>
+            <nav className="flex gap-1" aria-label="Main">
               {NAV.map((n) => (
-                <Link key={n.href} href={n.href} className={cx("rounded-lg px-3 py-2 text-sm font-semibold", active(n.href) ? "bg-brand-50 text-brand-800 dark:bg-brand-900/50 dark:text-brand-100" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800")}>
+                <Link key={n.href} href={n.href} className={cx("rounded-full px-3.5 py-1.5 text-[15px]", active(n.href) ? "bg-black/[0.06] font-semibold dark:bg-white/10" : "text-ink-2 hover:text-ink dark:text-[#98989d] dark:hover:text-white")}>
                   {t(n.key)}
                 </Link>
               ))}
-              {hydrated && isAdmin && (
-                <Link href="/admin" className={cx("rounded-lg px-3 py-2 text-sm font-semibold", active("/admin") ? "bg-amber-100 text-amber-900" : "text-amber-700 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-slate-800")}>{t("nav.admin")}</Link>
-              )}
+              {hydrated && isAdmin && <Link href="/admin" className={cx("rounded-full px-3.5 py-1.5 text-[15px]", active("/admin") ? "bg-black/[0.06] font-semibold" : "text-ink-2")}>{t("nav.admin")}</Link>}
             </nav>
-            <div className="ml-auto flex items-center gap-1.5">
-              {hydrated && <LangSwitch />}
-              {hydrated && <ThemeButton />}
-            </div>
           </div>
         </header>
       )}
-      {!online && <div className="no-print bg-amber-100 px-4 py-2 text-center text-sm font-medium text-amber-900">{t("err.offline")}</div>}
-      <main id="main" className={cx(!immersive && "mx-auto max-w-6xl px-4 pb-28 pt-4 md:pb-12")}>
+      {!online && <div className="no-print bg-amber-100 px-4 py-2 text-center text-[13px] font-medium text-amber-900">{t("err.offline")}</div>}
+      <main id="main" className={cx(!immersive && "mx-auto max-w-5xl px-4 pb-28 pt-[max(0.75rem,env(safe-area-inset-top))] md:px-6 md:pb-12 md:pt-6")}>
         {hydrated ? children : (
-          <div className="space-y-4 pt-4" aria-busy="true">
-            <Skeleton className="h-8 w-48" />
+          <div className="space-y-4 pt-6" aria-busy="true">
+            <Skeleton className="h-10 w-48" />
             <Skeleton className="h-40 w-full" />
-            <div className="grid grid-cols-2 gap-4"><Skeleton className="h-48" /><Skeleton className="h-48" /></div>
+            <div className="grid grid-cols-2 gap-4"><Skeleton className="h-40" /><Skeleton className="h-40" /></div>
           </div>
         )}
       </main>
       {!immersive && (
-        <nav className="no-print fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur dark:border-slate-800 dark:bg-slate-950/95 md:hidden" aria-label="Main">
-          <div className="grid grid-cols-6">
-            {NAV.map((n) => (
-              <Link key={n.href} href={n.href} aria-current={active(n.href) ? "page" : undefined}
-                className={cx("flex min-h-[60px] flex-col items-center justify-center gap-0.5 text-[11px] font-semibold", active(n.href) ? "text-brand-700 dark:text-brand-300" : "text-slate-500")}>
-                <span aria-hidden className={cx("text-xl transition", active(n.href) && "scale-110")}>{n.icon}</span>
-                {t(n.key)}
+        <nav className="no-print fixed inset-x-0 bottom-0 z-30 border-t border-black/[0.08] bg-white/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl dark:border-white/10 dark:bg-[#1c1c1e]/85 md:hidden" aria-label="Main">
+          <div className="grid grid-cols-5">
+            {NAV.map(({ href, key, Icon }) => (
+              <Link key={href} href={href} aria-current={active(href) ? "page" : undefined}
+                className={cx("flex min-h-[54px] flex-col items-center justify-center gap-0.5 text-[10px] font-medium", active(href) ? "text-brand-600 dark:text-brand-400" : "text-ink-3")}>
+                <Icon width={25} height={25} strokeWidth={active(href) ? 2.1 : 1.7} />
+                {t(key)}
               </Link>
             ))}
           </div>

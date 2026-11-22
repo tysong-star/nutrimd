@@ -8,8 +8,9 @@ import { useT, type TKey } from "@/lib/i18n";
 import { recipeAllowed } from "@/lib/recipeInfo";
 import { isoDate } from "@/lib/planner";
 import type { Allergen, Cuisine, Diet, MealType } from "@/lib/types";
-import { RecipeCard } from "@/components/RecipeCard";
-import { Chip, EmptyState, Input, Select, Tag, cx } from "@/components/ui";
+import { ProductPhoto, RecipeCard } from "@/components/RecipeCard";
+import { IconFilter, IconSearch } from "@/components/icons";
+import { Button, Chip, EmptyState, Field, IconButton, Input, Modal, PageHeader, Segmented, Select, Toggle, cx } from "@/components/ui";
 import { ALLERGENS, CUISINES, DIETS } from "@/components/ProfileSections";
 
 const MEAL_TYPES: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
@@ -72,69 +73,79 @@ function RecipesInner() {
 
   return (
     <div>
-      <h1 className="mb-4 text-2xl font-extrabold tracking-tight">{t("rec.title")}</h1>
-      <div className="flex gap-2">
-        <Input type="search" placeholder={t("rec.search")} value={q} onChange={(e) => setQ(e.target.value)} aria-label={t("rec.search")} />
-        <button onClick={() => setShowFilters(!showFilters)} aria-expanded={showFilters}
-          className={cx("relative min-h-[44px] shrink-0 rounded-xl border px-4 font-semibold", showFilters ? "border-brand-600 bg-brand-50 dark:bg-brand-900/40" : "border-slate-300 dark:border-slate-700")}>
-          ⚙️ <span className="hidden sm:inline">{t("rec.filters")}</span>
-          {activeFilters > 0 && <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 text-xs text-white">{activeFilters}</span>}
-        </button>
+      <PageHeader title={t("rec.title")} actions={
+        <IconButton label={t("rec.filters")} onClick={() => setShowFilters(true)} className={cx(activeFilters > 0 && "bg-brand-500/100 text-white dark:bg-brand-500/100")}><IconFilter width={20} height={20} /></IconButton>
+      } />
+      <div className="relative">
+        <IconSearch width={18} height={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
+        <Input type="search" placeholder={t("rec.search")} value={q} onChange={(e) => setQ(e.target.value)} aria-label={t("rec.search")} className="pl-9" />
       </div>
-
-      <div className="scrollbar-none -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1">
-        <Chip active={mode === "all"} onClick={() => setMode("all")}>{t("common.all")}</Chip>
-        <Chip active={mode === "fav"} onClick={() => setMode("fav")}>❤️ {t("rec.favorites")} ({favorites.length})</Chip>
-        <Chip active={mode === "fridge"} onClick={() => setMode("fridge")}>🧊 {t("rec.fridge")}</Chip>
-        <span className="mx-1 w-px shrink-0 bg-slate-200 dark:bg-slate-800" />
-        {MEAL_TYPES.map((m) => <Chip key={m} active={mealType === m} onClick={() => setMealType(mealType === m ? null : m)}>{t(m === "snack" ? "slot.snack1" : (`slot.${m}` as TKey))}</Chip>)}
-      </div>
-
-      {showFilters && (
-        <div className="mt-3 space-y-4 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-          <Chip active={onlyMine} onClick={() => setOnlyMine(!onlyMine)}>✅ {t("rec.onlyMine")}</Chip>
-          <FilterRow label={t("p.diet")}>{DIETS.map((d) => <Chip key={d} active={diet === d} onClick={() => setDiet(diet === d ? null : d)}>{t(`diet.${d}` as TKey)}</Chip>)}</FilterRow>
-          <FilterRow label={t("p.cuisines")}>{CUISINES.map((c) => <Chip key={c} active={cuisine === c} onClick={() => setCuisine(cuisine === c ? null : c)}>{t(`cu.${c}` as TKey)}</Chip>)}</FilterRow>
-          <FilterRow label="Tags">{TAGS.map((tg) => <Chip key={tg} active={tags.includes(tg)} onClick={() => setTags(tags.includes(tg) ? tags.filter((x) => x !== tg) : [...tags, tg])}>{t(`tag.${tg}` as TKey)}</Chip>)}</FilterRow>
-          <FilterRow label={`🚫 ${t("p.allergens")}`}>{ALLERGENS.map((a) => <Chip key={a} active={avoid.includes(a)} onClick={() => setAvoid(avoid.includes(a) ? avoid.filter((x) => x !== a) : [...avoid, a])}>{t(`al.${a}` as TKey)}</Chip>)}</FilterRow>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <label className="text-sm font-semibold">{t("p.maxTime")}<Select value={maxTime} onChange={(e) => setMaxTime(Number(e.target.value))}>{[15, 30, 45, 60, 999].map((m) => <option key={m} value={m}>{m === 999 ? t("time.any") : `≤ ${m} min`}</option>)}</Select></label>
-            <label className="text-sm font-semibold">{t("rec.cost")}<Select value={maxCost} onChange={(e) => setMaxCost(Number(e.target.value))}>{[15, 25, 40, 60, 999].map((m) => <option key={m} value={m}>{m === 999 ? t("common.all") : `≤ ${m} lei`}</option>)}</Select></label>
-            <label className="text-sm font-semibold">{t("p.difficulty")}<Select value={maxDiff} onChange={(e) => setMaxDiff(Number(e.target.value))}>{[1, 2, 3].map((d) => <option key={d} value={d}>{t(`diff.${d}` as TKey)}</option>)}</Select></label>
-            <label className="text-sm font-semibold">{t("rec.sort")}<Select value={sort} onChange={(e) => setSort(e.target.value as Sort)}>{(["relevance", "time", "cost", "protein", "kcal"] as Sort[]).map((s) => <option key={s} value={s}>{t(`sort.${s}` as TKey)}</option>)}</Select></label>
-          </div>
-          <button onClick={reset} className="text-sm font-semibold text-brand-700 underline dark:text-brand-300">Reset</button>
-        </div>
-      )}
+      <Segmented className="mt-3" value={mode} onChange={setMode} options={[
+        { value: "all", label: t("common.all") },
+        { value: "fav", label: t("rec.favorites") },
+        { value: "fridge", label: t("rec.fridge") },
+      ]} />
 
       {mode === "fridge" && (
-        <div className="mt-3 rounded-2xl bg-sky-50 p-4 dark:bg-sky-950/40">
-          <p className="mb-2 text-sm">{t("rec.fridgeHint")}</p>
+        <div className="mt-4">
+          <p className="mb-2 px-1 text-[15px] text-ink-2 dark:text-[#98989d]">{t("rec.fridgeHint")}</p>
           <Input value={fridgeQ} onChange={(e) => setFridgeQ(e.target.value)} placeholder="ouă, cartofi, яйца…" aria-label={t("rec.fridge")} />
-          <div className="mt-2 flex flex-wrap gap-2">
-            {fridgeMatches.map((i) => <Chip key={i.id} onClick={() => { setFridge([...fridge, i.id]); setFridgeQ(""); }}>{i.emoji} {l(i.name)} +</Chip>)}
-          </div>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {fridge.map((id) => <button key={id} onClick={() => setFridge(fridge.filter((x) => x !== id))}><Tag tone="blue">{catalog.ingMap[id].emoji} {l(catalog.ingMap[id].name)} ✕</Tag></button>)}
-          </div>
+          {fridgeMatches.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {fridgeMatches.map((i) => (
+                <button key={i.id} onClick={() => { setFridge([...fridge, i.id]); setFridgeQ(""); }} className="flex items-center gap-2 rounded-full bg-white py-1 pl-1 pr-3 text-[15px] shadow-card dark:bg-[#1c1c1e]">
+                  <ProductPhoto id={i.id} size={28} className="rounded-full" />{l(i.name)}
+                </button>
+              ))}
+            </div>
+          )}
+          {fridge.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {fridge.map((id) => (
+                <button key={id} onClick={() => setFridge(fridge.filter((x) => x !== id))} className="flex items-center gap-2 rounded-full bg-brand-500/100/10 py-1 pl-1 pr-3 text-[15px] text-brand-800 dark:text-brand-300">
+                  <ProductPhoto id={id} size={28} className="rounded-full" />{l(catalog.ingMap[id].name)} ✕
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      <p className="mt-4 text-sm text-slate-500" aria-live="polite">{results.length} / {catalog.recipes.length}</p>
       {results.length === 0 ? (
-        <div className="mt-4"><EmptyState emoji={mode === "fridge" ? "🧊" : "🔍"} title={mode === "fridge" && !fridge.length ? t("rec.fridge") : t("rec.none")} text={mode === "fridge" ? t("rec.fridgeHint") : undefined} /></div>
+        <EmptyState emoji={mode === "fridge" ? "🧊" : mode === "fav" ? "♡" : "🔍"} title={mode === "fridge" && !fridge.length ? t("rec.fridge") : t("rec.none")} text={mode === "fridge" ? t("rec.fridgeHint") : undefined} />
       ) : (
-        <div className="mt-2 grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
           {results.map(({ r, info, missing }) => (
             <RecipeCard key={r.id} recipe={r} info={info}
               extra={mode === "fridge" ? (
-                <p className={cx("mt-2 text-xs font-semibold", missing.length ? "text-amber-700 dark:text-amber-300" : "text-brand-700 dark:text-brand-300")}>
-                  {missing.length ? `${t("rec.missing", { n: missing.length })}: ${missing.slice(0, 3).map((id) => l(catalog.ingMap[id]?.name)).join(", ")}${missing.length > 3 ? "…" : ""}` : t("rec.haveAll")}
+                <p className={cx("px-0.5 text-[13px] font-medium", missing.length ? "text-amber-700 dark:text-amber-400" : "text-brand-700 dark:text-brand-400")}>
+                  {missing.length ? t("rec.missing", { n: missing.length }) : t("rec.haveAll")}
                 </p>
               ) : undefined} />
           ))}
         </div>
       )}
+
+      <Modal open={showFilters} onClose={() => setShowFilters(false)} title={t("rec.filters")}>
+        <div className="space-y-5">
+          <div className="rounded-2xl bg-white px-4 dark:bg-[#2c2c2e]"><Toggle checked={onlyMine} onChange={setOnlyMine} label={t("rec.onlyMine")} /></div>
+          <FilterRow label={t("plan.day")}>{MEAL_TYPES.map((m) => <Chip key={m} active={mealType === m} onClick={() => setMealType(mealType === m ? null : m)}>{t(m === "snack" ? "slot.snack1" : (`slot.${m}` as TKey))}</Chip>)}</FilterRow>
+          <FilterRow label={t("p.diet")}>{DIETS.map((d) => <Chip key={d} active={diet === d} onClick={() => setDiet(diet === d ? null : d)}>{t(`diet.${d}` as TKey)}</Chip>)}</FilterRow>
+          <FilterRow label={t("p.cuisines")}>{CUISINES.map((c) => <Chip key={c} active={cuisine === c} onClick={() => setCuisine(cuisine === c ? null : c)}>{t(`cu.${c}` as TKey)}</Chip>)}</FilterRow>
+          <FilterRow label="Tags">{TAGS.map((tg) => <Chip key={tg} active={tags.includes(tg)} onClick={() => setTags(tags.includes(tg) ? tags.filter((x) => x !== tg) : [...tags, tg])}>{t(`tag.${tg}` as TKey)}</Chip>)}</FilterRow>
+          <FilterRow label={t("p.allergens")}>{ALLERGENS.map((a) => <Chip key={a} active={avoid.includes(a)} onClick={() => setAvoid(avoid.includes(a) ? avoid.filter((x) => x !== a) : [...avoid, a])}>{t(`al.${a}` as TKey)}</Chip>)}</FilterRow>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label={t("p.maxTime")}><Select value={maxTime} onChange={(e) => setMaxTime(Number(e.target.value))}>{[15, 30, 45, 60, 999].map((m) => <option key={m} value={m}>{m === 999 ? t("time.any") : `≤ ${m} min`}</option>)}</Select></Field>
+            <Field label={t("rec.cost")}><Select value={maxCost} onChange={(e) => setMaxCost(Number(e.target.value))}>{[15, 25, 40, 60, 999].map((m) => <option key={m} value={m}>{m === 999 ? t("common.all") : `≤ ${m} lei`}</option>)}</Select></Field>
+            <Field label={t("p.difficulty")}><Select value={maxDiff} onChange={(e) => setMaxDiff(Number(e.target.value))}>{[1, 2, 3].map((d) => <option key={d} value={d}>{t(`diff.${d}` as TKey)}</option>)}</Select></Field>
+            <Field label={t("rec.sort")}><Select value={sort} onChange={(e) => setSort(e.target.value as Sort)}>{(["relevance", "time", "cost", "protein", "kcal"] as Sort[]).map((x) => <option key={x} value={x}>{t(`sort.${x}` as TKey)}</option>)}</Select></Field>
+          </div>
+          <div className="flex gap-2">
+            <Button className="flex-1" onClick={() => setShowFilters(false)}>{t("common.done")} · {results.length}</Button>
+            <Button variant="secondary" onClick={reset}>Reset</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -142,7 +153,7 @@ function RecipesInner() {
 function FilterRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="mb-1.5 text-sm font-semibold">{label}</div>
+      <div className="mb-2 px-1 text-[13px] font-medium uppercase tracking-wide text-ink-2 dark:text-[#98989d]">{label}</div>
       <div className="flex flex-wrap gap-2">{children}</div>
     </div>
   );

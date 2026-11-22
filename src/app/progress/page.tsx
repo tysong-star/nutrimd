@@ -12,7 +12,7 @@ import type { Ingredient, JournalEntry, MealSlot } from "@/lib/types";
 import { WORKOUTS } from "@/data/workouts";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { Bar, Columns, LineChart, Ring } from "@/components/viz";
-import { Button, Card, Chip, Field, Input, Modal, Select, Toggle, cx } from "@/components/ui";
+import { Button, Card, Chip, Field, Input, Modal, PageHeader, Select, Toggle, cx } from "@/components/ui";
 import type { Catalog } from "@/lib/catalog";
 
 const SLOTS: (MealSlot | "extra")[] = ["breakfast", "snack1", "lunch", "snack2", "dinner", "snack3", "extra"];
@@ -77,7 +77,7 @@ export default function ProgressPage() {
 
   return (
     <div>
-      <h1 className="mb-4 text-2xl font-extrabold tracking-tight">{t("prog.title")}</h1>
+      <PageHeader title={t("nav.progress")} />
 
       {/* ---------- Jurnal ---------- */}
       <div className="mb-3 flex items-center gap-2">
@@ -100,17 +100,17 @@ export default function ProgressPage() {
 
           <Card>
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-bold">📓 {t("prog.journal")}</h2>
-              <Button size="sm" onClick={() => setAdding(true)}>＋ {t("prog.addFood")}</Button>
+              <h2 className="text-lg font-bold">{t("prog.journal")}</h2>
+              <Button size="sm" onClick={() => setAdding(true)}>{t("prog.addFood")}</Button>
             </div>
-            {dayEntries.length === 0 ? <p className="py-6 text-center text-sm text-slate-500">{t("prog.empty")}</p> : (
-              <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+            {dayEntries.length === 0 ? <p className="py-6 text-center text-sm text-ink-2">{t("prog.empty")}</p> : (
+              <ul className="divide-y divide-black/[0.06] dark:divide-white/10">
                 {SLOTS.map((slot) => dayEntries.filter((j) => j.slot === slot).map((j) => (
                   <li key={j.id} className="flex items-center gap-3 py-2">
                     <span className="w-20 shrink-0 text-xs font-semibold uppercase text-brand-700 dark:text-brand-300">{t(`slot.${slot}` as TKey)}</span>
                     <span className="flex-1 text-sm">{j.name}{j.grams ? ` · ${j.grams} g` : ""} {j.source === "barcode" && "📷"}</span>
                     <span className="text-sm font-semibold tabular-nums">{Math.round(j.nutrition.kcal)} kcal</span>
-                    <button onClick={() => removeEntry(j.id)} className="h-9 w-9 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600" aria-label={t("common.delete")}>✕</button>
+                    <button onClick={() => removeEntry(j.id)} className="h-9 w-9 rounded-lg text-ink-3 hover:bg-red-50 hover:text-red-600" aria-label={t("common.delete")}>✕</button>
                   </li>
                 )))}
               </ul>
@@ -119,10 +119,10 @@ export default function ProgressPage() {
 
           <Card>
             <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-lg font-bold">📊 {t("prog.calories")}</h2>
+              <h2 className="text-lg font-bold">{t("prog.calories")}</h2>
               <div className="flex gap-1">{(["week", "month"] as const).map((r) => <Chip key={r} active={range === r} onClick={() => setRange(r)}>{t(r === "week" ? "prog.week" : "prog.month")}</Chip>)}</div>
             </div>
-            {calSeries.some((c) => c.y > 0) ? <Columns data={calSeries.map((c) => ({ ...c, tone: c.y > targets.kcal * 1.05 ? "fill-coral-500" : "fill-brand-500" }))} target={targets.kcal} unit="kcal" /> : <p className="py-6 text-center text-sm text-slate-500">{t("prog.noData")}</p>}
+            {calSeries.some((c) => c.y > 0) ? <Columns data={calSeries.map((c) => ({ ...c, tone: c.y > targets.kcal * 1.05 ? "fill-coral-500" : "fill-brand-500" }))} target={targets.kcal} unit="kcal" /> : <p className="py-6 text-center text-sm text-ink-2">{t("prog.noData")}</p>}
             {avg && (
               <div className="mt-3 space-y-2">
                 <div className="text-sm font-semibold">{t("prog.macros")}</div>
@@ -134,8 +134,8 @@ export default function ProgressPage() {
           </Card>
 
           <Card>
-            <h2 className="mb-2 text-lg font-bold">⚖️ {t("prog.weight")}</h2>
-            {weights.length >= 2 ? <LineChart points={weights.slice(-30).map((w) => ({ x: dateShort(w.date, lang).slice(0, 5), y: w.kg }))} unit="kg" target={profile.targetWeightKg} /> : <p className="py-4 text-center text-sm text-slate-500">{t("prog.noData")}</p>}
+            <h2 className="mb-2 text-lg font-bold">{t("prog.weight")}</h2>
+            {weights.length >= 2 ? <LineChart points={weights.slice(-30).map((w) => ({ x: dateShort(w.date, lang).slice(0, 5), y: w.kg }))} unit="kg" target={profile.targetWeightKg} /> : <p className="py-4 text-center text-sm text-ink-2">{t("prog.noData")}</p>}
             <form className="mt-3 flex gap-2" onSubmit={(e) => { e.preventDefault(); logWeight(); }}>
               <Input type="number" step="0.1" inputMode="decimal" value={weightIn} onChange={(e) => setWeightIn(e.target.value)} aria-label={t("p.weight")} />
               <Button type="submit">{t("prog.logWeight")}</Button>
@@ -143,16 +143,16 @@ export default function ProgressPage() {
           </Card>
 
           <Card>
-            <h2 className="mb-2 text-lg font-bold">💰 {t("prog.spending")}</h2>
-            {spendSeries.some((s) => s.y > 0) ? <Columns data={spendSeries.map((s) => ({ ...s, tone: s.y > budgetPer ? "fill-coral-500" : "fill-amber-500" }))} target={budgetPer} unit="lei" /> : <p className="py-4 text-center text-sm text-slate-500">{t("prog.noData")}</p>}
-            <p className="text-xs text-slate-500">{t("p.budget")}: {mdl(budgetPer, lang)} {t(range === "week" ? "period.week" : "period.month")}</p>
+            <h2 className="mb-2 text-lg font-bold">{t("prog.spending")}</h2>
+            {spendSeries.some((s) => s.y > 0) ? <Columns data={spendSeries.map((s) => ({ ...s, tone: s.y > budgetPer ? "fill-coral-500" : "fill-amber-500" }))} target={budgetPer} unit="lei" /> : <p className="py-4 text-center text-sm text-ink-2">{t("prog.noData")}</p>}
+            <p className="text-xs text-ink-2">{t("p.budget")}: {mdl(budgetPer, lang)} {t(range === "week" ? "period.week" : "period.month")}</p>
           </Card>
         </div>
 
         <aside className="space-y-4">
           <Card>
-            <h2 className="mb-2 text-lg font-bold">💧 {t("prog.water")}</h2>
-            <div className="text-3xl font-extrabold tabular-nums">{water[date] ?? 0} <span className="text-base font-semibold text-slate-500">/ {targets.waterMl} ml</span></div>
+            <h2 className="mb-2 text-lg font-bold">{t("prog.water")}</h2>
+            <div className="text-3xl font-extrabold tabular-nums">{water[date] ?? 0} <span className="text-base font-semibold text-ink-2">/ {targets.waterMl} ml</span></div>
             <div className="my-3 flex flex-wrap gap-1" aria-hidden>
               {Array.from({ length: Math.ceil(targets.waterMl / 250) }, (_, i) => <span key={i} className={cx("text-2xl", i < (water[date] ?? 0) / 250 ? "" : "opacity-20 grayscale")}>🥛</span>)}
             </div>
@@ -160,15 +160,15 @@ export default function ProgressPage() {
           </Card>
 
           <Card>
-            <h2 className="mb-2 text-lg font-bold">🏃 {t("prog.fitness")}</h2>
+            <h2 className="mb-2 text-lg font-bold">{t("prog.fitness")}</h2>
             <ul className="space-y-2">
               {WORKOUTS.map((w) => {
                 const kcal = burnedKcal(w.met, profile.weightKg, w.minutes);
                 const done = workouts.some((x) => x.date === date && x.workoutId === w.id);
                 return (
                   <li key={w.id}>
-                    <details className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800">
-                      <summary className="flex cursor-pointer items-center gap-2 font-semibold"><span aria-hidden>{w.emoji}</span><span className="flex-1">{l(w.name)}</span><span className="text-xs text-slate-500">{w.minutes} min · ~{kcal} kcal</span></summary>
+                    <details className="rounded-xl bg-slate-50 p-3 dark:bg-white/10">
+                      <summary className="flex cursor-pointer items-center gap-2 font-semibold"><span aria-hidden>{w.emoji}</span><span className="flex-1">{l(w.name)}</span><span className="text-xs text-ink-2">{w.minutes} min · ~{kcal} kcal</span></summary>
                       <ol className="ml-5 mt-2 list-decimal space-y-1 text-sm">{w.steps.map((s, i) => <li key={i}>{l(s)}</li>)}</ol>
                       <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(l(w.name))}`} target="_blank" rel="noreferrer" className="mt-2 block text-sm text-brand-700 underline dark:text-brand-300">🎬 Video</a>
                       <Button size="sm" className="mt-2" disabled={done} onClick={() => set({ workouts: [...workouts, { id: uid(), date, workoutId: w.id, minutes: w.minutes, kcal }] })}>{done ? "✓" : t("prog.doWorkout")}</Button>
@@ -180,7 +180,7 @@ export default function ProgressPage() {
           </Card>
 
           <Card>
-            <h2 className="mb-2 text-lg font-bold">🔔 {t("prog.reminders")}</h2>
+            <h2 className="mb-2 text-lg font-bold">{t("prog.reminders")}</h2>
             {!reminders.enabled ? <Button variant="secondary" onClick={enableNotif}>{t("prog.enableNotif")}</Button> : <Toggle checked label={t("prog.enableNotif")} onChange={() => set({ reminders: { ...reminders, enabled: false } })} />}
             {typeof Notification !== "undefined" && Notification.permission === "denied" && <p className="mt-2 text-xs text-red-600">{t("prog.notifDenied")}</p>}
             <div className="mt-3 grid grid-cols-3 gap-2">
@@ -233,7 +233,7 @@ function AddFoodModal({ open, onClose, onAdd, planDay, catalog }: { catalog: Cat
             {planDay.meals.map((m) => {
               const r = catalog.recipeMap[m.recipeId]; const info = catalog.info[m.recipeId];
               return r && (
-                <li key={m.uid}><button className="flex min-h-[48px] w-full items-center gap-2 rounded-xl bg-slate-50 px-3 text-left dark:bg-slate-800" onClick={() => onAdd({ slot: m.slot, name: l(r.title), source: "plan", refId: m.uid, nutrition: roundN(addN(ZERO, info.nutrition, m.portions)) })}>
+                <li key={m.uid}><button className="flex min-h-[48px] w-full items-center gap-2 rounded-xl bg-slate-50 px-3 text-left dark:bg-white/10" onClick={() => onAdd({ slot: m.slot, name: l(r.title), source: "plan", refId: m.uid, nutrition: roundN(addN(ZERO, info.nutrition, m.portions)) })}>
                   <span>{r.emoji}</span><span className="flex-1 text-sm font-semibold">{l(r.title)}</span><span className="text-xs">{Math.round(info.nutrition.kcal * m.portions)} kcal</span>
                 </button></li>
               );
@@ -245,12 +245,12 @@ function AddFoodModal({ open, onClose, onAdd, planDay, catalog }: { catalog: Cat
             <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("rec.search")} />
             <ul className="mt-2 space-y-1">
               {recipeResults.map((r) => (
-                <li key={r.id}><button className="flex min-h-[44px] w-full items-center gap-2 rounded-lg px-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => onAdd({ slot, name: l(r.title), source: "search", refId: r.id, nutrition: catalog.info[r.id].nutrition })}>
-                  {r.emoji} <span className="flex-1">{l(r.title)} <span className="text-xs text-slate-500">(1 {t("common.servings")})</span></span><span className="text-xs">{catalog.info[r.id].nutrition.kcal} kcal</span>
+                <li key={r.id}><button className="flex min-h-[44px] w-full items-center gap-2 rounded-lg px-2 text-left text-sm hover:bg-black/[0.05] dark:hover:bg-white/10" onClick={() => onAdd({ slot, name: l(r.title), source: "search", refId: r.id, nutrition: catalog.info[r.id].nutrition })}>
+                  {r.emoji} <span className="flex-1">{l(r.title)} <span className="text-xs text-ink-2">(1 {t("common.servings")})</span></span><span className="text-xs">{catalog.info[r.id].nutrition.kcal} kcal</span>
                 </button></li>
               ))}
               {ingResults.map((i) => (
-                <li key={i.id}><button className="flex min-h-[44px] w-full items-center gap-2 rounded-lg px-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => { setSel(i); setSource("search"); setGrams(String(i.unit === "pcs" ? i.gramsPerUnit ?? 100 : 100)); }}>
+                <li key={i.id}><button className="flex min-h-[44px] w-full items-center gap-2 rounded-lg px-2 text-left text-sm hover:bg-black/[0.05] dark:hover:bg-white/10" onClick={() => { setSel(i); setSource("search"); setGrams(String(i.unit === "pcs" ? i.gramsPerUnit ?? 100 : 100)); }}>
                   {i.emoji} <span className="flex-1">{l(i.name)}</span><span className="text-xs">{i.per100.kcal} kcal/100 g</span>
                 </button></li>
               ))}
@@ -268,7 +268,7 @@ function AddFoodModal({ open, onClose, onAdd, planDay, catalog }: { catalog: Cat
         )}
         {msg && <p className="mt-2 text-sm font-semibold">{msg}</p>}
         {sel && (
-          <div className="mt-2 space-y-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-800">
+          <div className="mt-2 space-y-3 rounded-xl bg-slate-50 p-3 dark:bg-white/10">
             <div className="font-semibold">{sel.emoji} {l(sel.name)}</div>
             <Field label={t("prog.grams")}><Input type="number" inputMode="numeric" value={grams} onChange={(e) => setGrams(e.target.value)} /></Field>
             <p className="text-sm">{Math.round((sel.per100.kcal * Number(grams)) / 100)} kcal · P {((sel.per100.protein * Number(grams)) / 100).toFixed(1)} g</p>

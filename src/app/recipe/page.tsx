@@ -1,71 +1,87 @@
 "use client";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
-import { cookHref } from "@/lib/paths";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useMemo, useState } from "react";
 import { useCatalog } from "@/lib/catalog";
 import { useApp } from "@/lib/store";
 import { useT, type TKey } from "@/lib/i18n";
-import { mdl, dateShort } from "@/lib/format";
-import { findSubstitute, ingredientConflict, subAmount } from "@/lib/recipeInfo";
+import { dateShort, mdl } from "@/lib/format";
 import { calcTargets, slotsFor, slotToMealType } from "@/lib/nutrition";
 import { isoDate } from "@/lib/planner";
-import { formatAmount } from "@/lib/shopping";
+import { compareStores, formatAmount, type ShoppingItem } from "@/lib/shopping";
 import { ratingOf, useAllReviews } from "@/lib/reviews";
 import { uid } from "@/lib/random";
-import { RecipeImage } from "@/components/RecipeCard";
+import { cookHref } from "@/lib/paths";
+import { ProductPhoto, RecipeImage } from "@/components/RecipeCard";
 import { StepTimer } from "@/components/Timer";
 import { VideoPlayer } from "@/components/VideoPlayer";
-import { Button, Card, EmptyState, Tag, cx } from "@/components/ui";
+import { Button, EmptyState, IconButton, ListGroup, ListRow, Segmented, cx } from "@/components/ui";
+import { IconBack, IconCheck, IconHeart } from "@/components/icons";
 
-function Stars({ value, onChange, size = "text-lg" }: { value: number; onChange?: (v: number) => void; size?: string }) {
+function Stars({ value, onChange }: { value: number; onChange?: (v: number) => void }) {
   return (
-    <span className={cx("inline-flex", size)} role={onChange ? "radiogroup" : "img"} aria-label={`${value.toFixed(1)} / 5`}>
-      {[1, 2, 3, 4, 5].map((i) => onChange ? (
-        <button key={i} type="button" role="radio" aria-checked={value === i} onClick={() => onChange(i)} className="min-h-[40px] min-w-[36px]">{i <= value ? "★" : "☆"}</button>
-      ) : <span key={i} className={i <= Math.round(value) ? "text-amber-500" : "text-slate-300"}>★</span>)}
+    <span className="inline-flex text-[20px] text-amber-500" role={onChange ? "radiogroup" : "img"} aria-label={`${value.toFixed(1)} / 5`}>
+      {[1, 2, 3, 4, 5].map((i) => onChange
+        ? <button key={i} type="button" role="radio" aria-checked={value === i} onClick={() => onChange(i)} className="min-h-[40px] min-w-[34px]">{i <= value ? "★" : "☆"}</button>
+        : <span key={i} className={i <= Math.round(value) ? "" : "text-black/15 dark:text-white/20"}>★</span>)}
     </span>
   );
 }
 
 function RecipeDetail() {
   const id = useSearchParams().get("id") ?? "";
+  const router = useRouter();
   const { t, l, lang } = useT();
   const catalog = useCatalog();
   const profile = useApp((s) => s.profile);
   const fav = useApp((s) => s.favorites.includes(id));
   const toggleFav = useApp((s) => s.toggleFavorite);
   const plan = useApp((s) => s.plan);
+  const extras = useApp((s) => s.shoppingExtras);
   const set = useApp((s) => s.set);
   const reviews = useAllReviews();
   const [servings, setServings] = useState<number | null>(null);
-  const [missingIds, setMissingIds] = useState<string[]>([]);
+  const [tab, setTab] = useState<"ingredients" | "steps" | "nutrition">("ingredients");
+  const [atHome, setAtHome] = useState<string[]>([]);
   const [activeStep, setActiveStep] = useState<number | undefined>();
+  const [showReviews, setShowReviews] = useState(false);
   const [rv, setRv] = useState({ rating: 5, text: "" });
   const [sent, setSent] = useState(false);
-  const [added, setAdded] = useState(false);
+  const [addedPlan, setAddedPlan] = useState(false);
 
   const recipe = catalog.recipeMap[id];
+  const n = servings ?? Math.max(1, profile.householdSize);
+  const k = recipe ? n / recipe.servings : 1;
+
+  // Ce trebuie cumpărat pentru rețetă (fără condimentele de bază și fără ce ai acasă).
+  const buyItems: ShoppingItem[] = useMemo(() => !recipe ? [] : recipe.ingredients
+    .map((ri) => ({ ri, ing: catalog.ingMap[ri.id] }))
+    .filter(({ ing }) => ing && !ing.pantry)
+    .map(({ ri, ing }) => ({ ingredientId: ing.id, amount: ri.amount * k, aisle: ing.aisle, pantry: false, recipes: [recipe.id] })), [recipe, catalog, k]);
+  const needed = buyItems.filter((i) => !atHome.includes(i.ingredientId));
+  const basket = useMemo(() => compareStores(needed, catalog, profile.city).cheapest, [needed, catalog, profile.city]);
+  const alreadyAdded = extras.some((e) => e.recipeId === id);
+
   if (!recipe) return <EmptyState emoji="🤷" title={t("rec.notFound")} action={<Link href="/recipes"><Button>{t("nav.recipes")}</Button></Link>} />;
   const info = catalog.info[id];
-  const n = servings ?? Math.max(1, profile.householdSize);
-  const k = n / recipe.servings;
   const targets = calcTargets(profile);
   const { avg, count, list } = ratingOf(reviews, id);
   const myPending = reviews.filter((r) => r.recipeId === id && r.status === "pending" && r.id.startsWith("u-"));
   const subs = catalog.substitutions[id] ?? [];
+  const store = basket?.storeIds.length === 1 ? catalog.storeMap[basket.storeIds[0]] : null;
 
   const addToPlan = () => {
     const today = isoDate(new Date());
-    const type = recipe.mealTypes[0];
-    const slot = slotsFor(profile.mealsPerDay).find((s) => slotToMealType(s.slot) === type)?.slot ?? "lunch";
+    const slot = slotsFor(profile.mealsPerDay).find((s) => slotToMealType(s.slot) === recipe.mealTypes[0])?.slot ?? "lunch";
     const meal = { uid: uid(), slot, recipeId: id, portions: 1 };
     const days = plan?.days ?? [];
-    const has = days.some((d) => d.date === today);
-    const next = has ? days.map((d) => (d.date === today ? { ...d, meals: [...d.meals, meal] } : d)) : [...days, { date: today, meals: [meal] }].sort((a, b) => a.date.localeCompare(b.date));
+    const next = days.some((d) => d.date === today) ? days.map((d) => (d.date === today ? { ...d, meals: [...d.meals, meal] } : d)) : [...days, { date: today, meals: [meal] }].sort((a, b) => a.date.localeCompare(b.date));
     set({ plan: { createdAt: plan?.createdAt ?? new Date().toISOString(), mealPrep: plan?.mealPrep ?? false, days: next } });
-    setAdded(true);
+    setAddedPlan(true);
+  };
+
+  const addToList = () => {
+    set({ shoppingExtras: [...extras.filter((e) => e.recipeId !== id), { uid: uid(), recipeId: id, servings: n, items: needed.map((i) => ({ id: i.ingredientId, amount: +i.amount.toFixed(1) })) }] });
   };
 
   const submitReview = () => {
@@ -75,170 +91,144 @@ function RecipeDetail() {
     setSent(true);
   };
 
-  const nutRows: { key: TKey; v: number; unit: string; target?: number }[] = [
+  const nut: { key: TKey; v: number; unit: string; target?: number }[] = [
     { key: "macro.kcal", v: info.nutrition.kcal, unit: "kcal", target: targets.kcal },
     { key: "macro.protein", v: info.nutrition.protein, unit: "g", target: targets.protein },
     { key: "macro.carbs", v: info.nutrition.carbs, unit: "g", target: targets.carbs },
     { key: "macro.fat", v: info.nutrition.fat, unit: "g", target: targets.fat },
     { key: "macro.fiber", v: info.nutrition.fiber, unit: "g", target: targets.fiber },
-    { key: "macro.sugar", v: info.nutrition.sugar, unit: "g", target: 50 },
-    { key: "macro.salt", v: info.nutrition.salt, unit: "g", target: 5 },
+    { key: "macro.sugar", v: info.nutrition.sugar, unit: "g" },
+    { key: "macro.salt", v: info.nutrition.salt, unit: "g" },
   ];
 
   return (
-    <article className="pb-6">
-      <div className="relative -mx-4 h-64 overflow-hidden md:mx-0 md:h-80 md:rounded-3xl">
+    <article className="mx-auto max-w-2xl pb-8">
+      <div className="relative -mx-4 -mt-3 aspect-[4/3] overflow-hidden md:mx-0 md:mt-0 md:rounded-3xl">
         <RecipeImage recipe={recipe} big />
-        <div className="absolute inset-x-0 top-0 flex justify-between p-3">
-          <Link href="/recipes" className="flex h-11 w-11 items-center justify-center rounded-full bg-white/90 shadow dark:bg-slate-900/90" aria-label={t("common.back")}>←</Link>
-          <button onClick={() => toggleFav(id)} aria-pressed={fav} aria-label={t("rec.favorites")} className="flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-xl shadow dark:bg-slate-900/90">{fav ? "❤️" : "🤍"}</button>
+        <div className="absolute inset-x-0 top-0 flex justify-between p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+          <IconButton label={t("common.back")} onClick={() => (history.length > 1 ? router.back() : router.push("/recipes"))} className="bg-white/80 backdrop-blur dark:bg-black/50"><IconBack width={20} height={20} /></IconButton>
+          <IconButton label={t("rec.favorites")} onClick={() => toggleFav(id)} className={cx("bg-white/80 backdrop-blur dark:bg-black/50", fav && "text-red-500")}><IconHeart filled={fav} width={20} height={20} /></IconButton>
         </div>
       </div>
 
-      <div className="mt-4 grid gap-6 lg:grid-cols-[1fr_360px]">
-        <div className="min-w-0">
-          <h1 className="text-3xl font-extrabold tracking-tight">{l(recipe.title)}</h1>
-          <p className="mt-1 text-slate-600 dark:text-slate-400">{l(recipe.description)}</p>
-          <div className="mt-2 flex items-center gap-2 text-sm"><Stars value={avg} /> <span className="text-slate-500">{t("rec.rating", { r: avg.toFixed(1), n: count })}</span></div>
+      <h1 className="mt-5 text-[28px] font-bold leading-tight tracking-tight">{l(recipe.title)}</h1>
+      <p className="mt-1 text-[15px] text-ink-2 dark:text-[#98989d]">
+        {info.totalMin} {t("common.min")} · {info.nutrition.kcal} kcal · {mdl(info.costPerServing, lang)}{t("rec.perServingShort")}
+        {count > 0 && <> · <button onClick={() => setShowReviews(true)} className="text-amber-600">★ {avg.toFixed(1)}</button></>}
+      </p>
+      {info.allergens.length > 0 && <p className="mt-1 text-[15px] text-red-600 dark:text-red-400">{t("rec.allergens")}: {info.allergens.map((a) => t(`al.${a}` as TKey).toLowerCase()).join(", ")}</p>}
+      {subs.length > 0 && <p className="mt-1 text-[15px] text-sky-700 dark:text-sky-400">{t("rec.substituted")}: {subs.map(([a, b]) => `${l(catalog.ingMap[a].name)} → ${l(catalog.ingMap[b].name)}`).join("; ")}</p>}
 
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {[
-              [t("rec.prep"), `${recipe.prepMin} ${t("common.min")}`],
-              [t("rec.cook"), `${recipe.cookMin} ${t("common.min")}`],
-              [t("rec.difficulty"), `${"★".repeat(recipe.difficulty)} ${t(`diff.${recipe.difficulty}` as TKey)}`],
-              [t("rec.cost"), mdl(info.costPerServing, lang)],
-            ].map(([a, b]) => (
-              <div key={a} className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900"><div className="text-xs text-slate-500">{a}</div><div className="font-bold">{b}</div></div>
-            ))}
-          </div>
-          <p className="mt-1 text-xs text-slate-500">💡 {t("rec.costHint")}</p>
+      <div className="mt-5 flex gap-2">
+        <Link href={cookHref(id)} className="flex-1"><Button size="lg" className="w-full">{t("rec.cookNow")}</Button></Link>
+        <Button size="lg" variant="secondary" onClick={addToPlan} disabled={addedPlan}>{addedPlan ? <IconCheck width={20} height={20} /> : t("rec.addToPlan")}</Button>
+      </div>
 
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {info.tags.map((tg) => <Tag key={tg} tone={tg === "fast" ? "warm" : "green"}>{t(`tag.${tg}` as TKey)}</Tag>)}
-            {recipe.equipment.map((e) => <Tag key={e} tone="slate">{t(`eq.${e}` as TKey)}</Tag>)}
-          </div>
+      <Segmented className="mt-6" value={tab} onChange={setTab} options={[
+        { value: "ingredients", label: t("rec.ingredients") },
+        { value: "steps", label: t("rec.tabSteps") },
+        { value: "nutrition", label: t("rec.tabNutrition") },
+      ]} />
 
-          {/* Alergeni — foarte vizibili */}
-          <div className={cx("mt-4 rounded-2xl border-2 p-3", info.allergens.length ? "border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950/40" : "border-brand-200 bg-brand-50 dark:border-brand-900 dark:bg-brand-950/40")}>
-            <div className="text-sm font-bold">{info.allergens.length ? `⚠️ ${t("rec.allergens")}:` : `✅ ${t("rec.noAllergens")}`}</div>
-            {info.allergens.length > 0 && <div className="mt-1.5 flex flex-wrap gap-1.5">{info.allergens.map((a) => <Tag key={a} tone="red">{t(`al.${a}` as TKey)}</Tag>)}</div>}
-          </div>
-          {subs.length > 0 && (
-            <div className="mt-3 rounded-2xl bg-sky-50 p-3 text-sm dark:bg-sky-950/40">
-              <b>🔄 {t("rec.substituted")}:</b> {subs.map(([a, b]) => `${l(catalog.ingMap[a].name)} → ${l(catalog.ingMap[b].name)}`).join("; ")}
+      {tab === "ingredients" && (
+        <div className="mt-5">
+          <div className="mb-3 flex items-center justify-between px-1">
+            <span className="text-[17px] font-semibold">{n} {t("common.servings")}</span>
+            <div className="flex items-center gap-2" role="group" aria-label={t("common.servings")}>
+              <IconButton label="-" onClick={() => setServings(Math.max(1, n - 1))}>−</IconButton>
+              <IconButton label="+" onClick={() => setServings(Math.min(20, n + 1))}>+</IconButton>
             </div>
-          )}
-
-          <div className="mt-5 flex flex-wrap gap-2">
-            <Link href={cookHref(id)}><Button size="lg">👩‍🍳 {t("rec.cookMode")}</Button></Link>
-            <Button size="lg" variant="secondary" onClick={addToPlan} disabled={added}>{added ? `✓ ${t("rec.addedToPlan")}` : `📅 ${t("rec.addToPlan")}`}</Button>
           </div>
+          <ListGroup>
+            {recipe.ingredients.map((ri) => {
+              const ing = catalog.ingMap[ri.id];
+              return ing && <ListRow key={ri.id} left={<ProductPhoto id={ing.id} size={40} />} title={l(ing.name)} right={<span className="tabular-nums text-ink dark:text-white">{formatAmount(ri.amount * k, ing.unit, lang)}</span>} />;
+            })}
+          </ListGroup>
 
-          {recipe.video && (
-            <section className="mt-8">
-              <h2 className="mb-3 text-xl font-bold">🎬 {t("rec.video")}</h2>
-              <VideoPlayer video={recipe.video} steps={recipe.steps} activeStep={activeStep} onChapter={setActiveStep} />
-            </section>
-          )}
+          {/* De cumpărat: produse reale din magazin, cu preț */}
+          <ListGroup title={t("rec.toBuy")} footer={t("rec.haveAtHome")}>
+            {buyItems.map((it) => {
+              const ing = catalog.ingMap[it.ingredientId];
+              const home = atHome.includes(it.ingredientId);
+              const pick = basket?.picks[it.ingredientId];
+              const p = pick?.product;
+              return (
+                <ListRow key={it.ingredientId} onClick={() => setAtHome(home ? atHome.filter((x) => x !== it.ingredientId) : [...atHome, it.ingredientId])}
+                  className={cx(home && "opacity-40")}
+                  left={<ProductPhoto id={ing.id} size={44} />}
+                  title={<span className={cx(home && "line-through")}>{p ? p.name : l(ing.name)}</span>}
+                  subtitle={home ? t("rec.atHome") : p ? `${catalog.storeMap[p.storeId]?.name} · ${p.byWeight ? formatAmount(pick!.packs * p.packSize, ing.unit, lang) : `${p.packLabel}${pick!.packs > 1 ? ` × ${pick!.packs}` : ""}`}` : t("shop.outOfStock")}
+                  right={!home && pick ? <span className="tabular-nums text-ink dark:text-white">{mdl(pick.cost, lang)}</span> : undefined} />
+              );
+            })}
+            <div className="flex items-center justify-between px-4 py-3">
+              <span className="text-[15px] text-ink-2 dark:text-[#98989d]">{store ? store.name : t("shop.total")}</span>
+              <span className="text-[17px] font-semibold tabular-nums">{mdl(basket?.total ?? 0, lang)}</span>
+            </div>
+          </ListGroup>
+          <Button size="lg" className="w-full" variant={alreadyAdded ? "secondary" : "primary"} onClick={addToList} disabled={!needed.length}>
+            {alreadyAdded ? <><IconCheck width={20} height={20} /> {t("rec.addedToList")}</> : t("rec.addToList")}
+          </Button>
+          {alreadyAdded && <Link href="/shopping" className="mt-3 block text-center text-[15px] text-brand-700 dark:text-brand-400">{t("shop.title")} →</Link>}
+        </div>
+      )}
 
-          <section className="mt-8">
-            <h2 className="mb-3 text-xl font-bold">{t("rec.steps")}</h2>
-            <ol className="space-y-4">
-              {recipe.steps.map((s, i) => (
-                <li key={i} id={`step-${i}`} className={cx("flex gap-4 rounded-2xl bg-white p-3 shadow-sm dark:bg-slate-900", activeStep === i && "ring-2 ring-brand-500")}>
-                  <div className="h-24 w-24 shrink-0 overflow-hidden rounded-xl sm:h-28 sm:w-36">
-                    {s.image
-                      // eslint-disable-next-line @next/next/no-img-element
-                      ? <img src={s.image} alt={`${t("rec.stepOf", { n: i + 1, total: recipe.steps.length })}`} loading="lazy" className="h-full w-full object-cover" />
-                      : <RecipeImage recipe={{ ...recipe, image: undefined }} alt={`${t("rec.stepOf", { n: i + 1, total: recipe.steps.length })}`} className="[&>span:first-child]:text-4xl" />}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-1 flex h-7 w-7 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white">{i + 1}</div>
-                    <p className="leading-relaxed">{l(s.text)}</p>
-                    {s.timerMin ? <div className="mt-2"><StepTimer minutes={s.timerMin} /></div> : null}
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </section>
+      {tab === "steps" && (
+        <div className="mt-5">
+          {recipe.video && <div className="mb-5"><VideoPlayer video={recipe.video} steps={recipe.steps} activeStep={activeStep} onChapter={setActiveStep} /></div>}
+          <ol className="space-y-6">
+            {recipe.steps.map((s, i) => (
+              <li key={i} className={cx("flex gap-4", activeStep === i && "rounded-2xl bg-brand-500/10 p-3")}>
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-[15px] font-semibold text-white dark:bg-white dark:text-black">{i + 1}</span>
+                <div className="min-w-0 flex-1 pt-0.5">
+                  {s.image && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={s.image} alt="" loading="lazy" className="mb-3 aspect-video w-full rounded-xl object-cover" />
+                  )}
+                  <p className="text-[17px] leading-relaxed">{l(s.text)}</p>
+                  {s.timerMin ? <div className="mt-2"><StepTimer minutes={s.timerMin} /></div> : null}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
 
-          <section className="mt-8">
-            <h2 className="mb-3 text-xl font-bold">{t("rec.reviews")} ({count})</h2>
-            <Card className="mb-4">
-              {sent ? <p className="text-brand-700 dark:text-brand-300" role="status">{t("rec.reviewSent")}</p> : (
+      {tab === "nutrition" && (
+        <ListGroup className="mt-5" footer={`${t("common.perServing")} · % ${lang === "ro" ? "din ținta ta zilnică" : "от суточной нормы"}`}>
+          {nut.map((r) => (
+            <ListRow key={r.key} title={t(r.key)} right={<span className="tabular-nums"><span className="text-ink dark:text-white">{r.v} {r.unit}</span>{r.target ? <span className="ml-3 inline-block w-10 text-right">{Math.round((r.v / r.target) * 100)}%</span> : <span className="ml-3 inline-block w-10" />}</span>} />
+          ))}
+        </ListGroup>
+      )}
+
+      {/* Recenzii — ascunse implicit */}
+      <div className="mt-8">
+        {!showReviews ? (
+          <Button variant="ghost" className="w-full" onClick={() => setShowReviews(true)}>{t("rec.showReviews")} ({count})</Button>
+        ) : (
+          <section>
+            <h2 className="mb-3 px-1 text-[22px] font-bold">{t("rec.reviews")}</h2>
+            <div className="mb-4 rounded-2xl bg-white p-4 shadow-card dark:bg-[#1c1c1e]">
+              {sent ? <p className="text-brand-700 dark:text-brand-400" role="status">{t("rec.reviewSent")}</p> : (
                 <form onSubmit={(e) => { e.preventDefault(); submitReview(); }} className="space-y-2">
-                  <div className="font-semibold">{t("rec.writeReview")}</div>
-                  <Stars value={rv.rating} onChange={(v) => setRv({ ...rv, rating: v })} size="text-2xl text-amber-500" />
-                  <textarea value={rv.text} onChange={(e) => setRv({ ...rv, text: e.target.value })} rows={3} maxLength={600} className="w-full rounded-xl border border-slate-300 bg-white p-3 dark:border-slate-700 dark:bg-slate-950" aria-label={t("rec.writeReview")} />
-                  <Button type="submit" disabled={!rv.text.trim()}>{t("common.save")}</Button>
+                  <Stars value={rv.rating} onChange={(v) => setRv({ ...rv, rating: v })} />
+                  <textarea value={rv.text} onChange={(e) => setRv({ ...rv, text: e.target.value })} rows={3} maxLength={600} placeholder={t("rec.writeReview")} className="w-full rounded-xl bg-black/[0.05] p-3 text-[17px] focus:outline-none focus:ring-2 focus:ring-brand-500/40 dark:bg-white/10" aria-label={t("rec.writeReview")} />
+                  <Button type="submit" size="sm" disabled={!rv.text.trim()}>{t("common.save")}</Button>
                 </form>
               )}
-            </Card>
-            <ul className="space-y-3">
+            </div>
+            <ul className="space-y-4 px-1">
               {[...myPending, ...list].map((r) => (
-                <li key={r.id} className="rounded-2xl bg-white p-3 shadow-sm dark:bg-slate-900">
-                  <div className="flex items-center gap-2 text-sm"><b>{r.author}</b><Stars value={r.rating} size="text-sm" /><span className="text-slate-500">{dateShort(r.date, lang)}</span>{r.status === "pending" && <Tag tone="warm">{t("adm.pending")}</Tag>}</div>
-                  <p className="mt-1 text-sm">{r.text}</p>
+                <li key={r.id}>
+                  <div className="flex items-center gap-2 text-[15px]"><b className="font-semibold">{r.author}</b><span className="text-[13px] text-amber-500">{"★".repeat(r.rating)}</span><span className="text-[13px] text-ink-3">{dateShort(r.date, lang)}</span></div>
+                  <p className="text-[15px] text-ink-2 dark:text-[#98989d]">{r.text}</p>
                 </li>
               ))}
             </ul>
           </section>
-        </div>
-
-        <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
-          <Card>
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-bold">{t("rec.ingredients")}</h2>
-              <div className="flex items-center gap-1" role="group" aria-label={t("common.servings")}>
-                <button onClick={() => setServings(Math.max(1, n - 1))} className="h-10 w-10 rounded-full bg-slate-100 text-lg font-bold dark:bg-slate-800" aria-label="-">−</button>
-                <span className="min-w-[72px] text-center text-sm font-semibold tabular-nums" aria-live="polite">{n} {t("common.servings")}</span>
-                <button onClick={() => setServings(Math.min(20, n + 1))} className="h-10 w-10 rounded-full bg-slate-100 text-lg font-bold dark:bg-slate-800" aria-label="+">+</button>
-              </div>
-            </div>
-            <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-              {recipe.ingredients.map((ri) => {
-                const ing = catalog.ingMap[ri.id];
-                if (!ing) return null;
-                const conflict = ingredientConflict(ing, profile);
-                const markedMissing = missingIds.includes(ing.id);
-                const sub = conflict || markedMissing ? findSubstitute(ing, catalog.ingMap, profile, new Set(missingIds)) : null;
-                return (
-                  <li key={ri.id} className="py-2">
-                    <div className="flex items-center gap-2">
-                      <span aria-hidden className="text-xl">{ing.emoji}</span>
-                      <span className={cx("flex-1", markedMissing && "line-through opacity-60")}>{l(ing.name)}{ri.note ? ` (${l(ri.note)})` : ""}</span>
-                      <span className="text-sm font-semibold tabular-nums">{formatAmount(ri.amount * k, ing.unit, lang)}</span>
-                      <button onClick={() => setMissingIds(markedMissing ? missingIds.filter((x) => x !== ing.id) : [...missingIds, ing.id])}
-                        className="rounded-lg px-1.5 text-xs text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800" title="Nu am / Нет дома" aria-label={`${l(ing.name)}: nu am`}>{markedMissing ? "↺" : "✗"}</button>
-                    </div>
-                    {conflict && <div className="ml-8 text-xs font-semibold text-red-700 dark:text-red-300">⚠️ {ing.allergens.map((a) => t(`al.${a}` as TKey)).join(", ") || conflict}</div>}
-                    {(conflict || markedMissing) && (
-                      <div className="ml-8 text-xs text-sky-800 dark:text-sky-300">
-                        {sub ? `🔄 ${t("rec.substitute", { x: `${sub.emoji} ${l(sub.name)} — ${formatAmount(subAmount(ing, sub, ri.amount * k), sub.unit, lang)}` })}` : "—"}
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </Card>
-
-          <Card>
-            <h2 className="mb-1 text-lg font-bold">{t("rec.nutrition")}</h2>
-            <p className="mb-2 text-xs text-slate-500">{t("common.perServing")} · % {lang === "ro" ? "din ținta ta zilnică" : "от вашей суточной нормы"}</p>
-            <table className="w-full text-sm">
-              <tbody>
-                {nutRows.map((r) => (
-                  <tr key={r.key} className="border-b border-slate-100 last:border-0 dark:border-slate-800">
-                    <th scope="row" className="py-1.5 text-left font-medium">{t(r.key)}</th>
-                    <td className="py-1.5 text-right font-semibold tabular-nums">{r.v} {r.unit}</td>
-                    <td className="w-16 py-1.5 text-right text-xs text-slate-500 tabular-nums">{r.target ? `${Math.round((r.v / r.target) * 100)}%` : ""}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card>
-        </aside>
+        )}
       </div>
     </article>
   );

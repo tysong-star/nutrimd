@@ -36,6 +36,8 @@ export interface AppState {
   workouts: { id: string; date: string; workoutId: string; minutes: number; kcal: number }[];
   spending: { id: string; date: string; amount: number; storeId: string }[];
   shoppingChecked: Record<string, boolean>;
+  /** Produse adăugate din rețete („Adaugă în listă”), în plus față de plan. Cantități pentru toată gospodăria. */
+  shoppingExtras: { uid: string; recipeId: string; servings: number; items: { id: string; amount: number }[] }[];
   excludePantry: boolean;
   userReviews: Review[];
   reminders: { enabled: boolean; times: Partial<Record<MealSlot, string>>; water: boolean; shoppingDay: number | null };
@@ -93,6 +95,7 @@ const initial = {
   workouts: [],
   spending: [],
   shoppingChecked: {},
+  shoppingExtras: [],
   excludePantry: true,
   userReviews: [],
   reminders: { enabled: false, times: { breakfast: "08:00", lunch: "13:00", dinner: "19:00" }, water: true, shoppingDay: 6 },

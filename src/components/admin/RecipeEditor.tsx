@@ -89,7 +89,7 @@ export function RecipeEditor({ initial, onSave, onCancel }: { initial: Recipe; o
                   {INGREDIENTS.map((x) => <option key={x.id} value={x.id}>{x.emoji} {l(x.name)}</option>)}
                 </Select>
                 <Input type="number" step="any" min={0} className="!w-28" value={ri.amount} onChange={(e) => up({ ingredients: r.ingredients.map((x, j) => (j === i ? { ...x, amount: Number(e.target.value) } : x)) })} aria-label="amount" />
-                <span className="self-center text-sm text-slate-500 w-8">{ing?.unit === "pcs" ? "buc" : ing?.unit}</span>
+                <span className="self-center text-sm text-ink-2 w-8">{ing?.unit === "pcs" ? "buc" : ing?.unit}</span>
                 <Button type="button" variant="ghost" size="sm" onClick={() => up({ ingredients: r.ingredients.filter((_, j) => j !== i) })} aria-label={t("common.delete")}>✕</Button>
               </div>
             );
@@ -102,10 +102,10 @@ export function RecipeEditor({ initial, onSave, onCancel }: { initial: Recipe; o
         <legend className="mb-2 font-bold">{t("rec.steps")}</legend>
         <ol className="space-y-3">
           {r.steps.map((s, i) => (
-            <li key={i} className="space-y-2 rounded-xl bg-slate-50 p-3 dark:bg-slate-800">
+            <li key={i} className="space-y-2 rounded-xl bg-slate-50 p-3 dark:bg-white/10">
               <div className="font-semibold">#{i + 1}</div>
-              <textarea placeholder="RO *" rows={2} className="w-full rounded-lg border border-slate-300 bg-white p-2 dark:border-slate-700 dark:bg-slate-950" value={s.text.ro} onChange={(e) => up({ steps: r.steps.map((x, j) => (j === i ? { ...x, text: { ...x.text, ro: e.target.value } } : x)) })} />
-              <textarea placeholder="RU" rows={2} className="w-full rounded-lg border border-slate-300 bg-white p-2 dark:border-slate-700 dark:bg-slate-950" value={s.text.ru} onChange={(e) => up({ steps: r.steps.map((x, j) => (j === i ? { ...x, text: { ...x.text, ru: e.target.value } } : x)) })} />
+              <textarea placeholder="RO *" rows={2} className="w-full rounded-lg border border-black/10 bg-white p-2 dark:border-white/10 dark:bg-[#1c1c1e]" value={s.text.ro} onChange={(e) => up({ steps: r.steps.map((x, j) => (j === i ? { ...x, text: { ...x.text, ro: e.target.value } } : x)) })} />
+              <textarea placeholder="RU" rows={2} className="w-full rounded-lg border border-black/10 bg-white p-2 dark:border-white/10 dark:bg-[#1c1c1e]" value={s.text.ru} onChange={(e) => up({ steps: r.steps.map((x, j) => (j === i ? { ...x, text: { ...x.text, ru: e.target.value } } : x)) })} />
               <div className="flex flex-wrap items-end gap-3">
                 <Field label="⏱ min"><Input type="number" min={0} className="!w-24" value={s.timerMin ?? ""} onChange={(e) => up({ steps: r.steps.map((x, j) => (j === i ? { ...x, timerMin: e.target.value ? Number(e.target.value) : undefined } : x)) })} /></Field>
                 <Field label="📷"><input type="file" accept="image/*" className="text-sm" onChange={async (e) => { const f = e.target.files?.[0]; if (f) { const img = await resizeImage(f, 900); up({ steps: r.steps.map((x, j) => (j === i ? { ...x, image: img } : x)) }); } }} /></Field>
@@ -146,7 +146,7 @@ export function RecipeEditor({ initial, onSave, onCancel }: { initial: Recipe; o
         )}
       </fieldset>
 
-      <div className="sticky bottom-0 flex gap-2 border-t border-slate-200 bg-white py-3 dark:border-slate-800 dark:bg-slate-900">
+      <div className="sticky bottom-0 flex gap-2 border-t border-black/[0.06] bg-white py-3 dark:border-white/10 dark:bg-[#1c1c1e]">
         <Button type="submit" disabled={!valid}>{t("common.save")}</Button>
         <Button type="button" variant="ghost" onClick={onCancel}>{t("common.cancel")}</Button>
       </div>

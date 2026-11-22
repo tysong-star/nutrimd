@@ -46,9 +46,9 @@ export function StepTimer({ minutes, big }: { minutes: number; big?: boolean }) 
           ▶ {left && left > 0 ? "" : t("rec.startTimer", { n: minutes })}
         </button>
       ) : (
-        <button onClick={() => setRunning(false)} className={cx("rounded-xl bg-slate-200 font-semibold dark:bg-slate-700", big ? "min-h-[64px] px-6" : "min-h-[40px] px-3")}>⏸</button>
+        <button onClick={() => setRunning(false)} className={cx("rounded-xl bg-black/[0.05] font-semibold dark:bg-white/10", big ? "min-h-[64px] px-6" : "min-h-[40px] px-3")}>⏸</button>
       )}
-      {left !== null && !running && <button onClick={() => setLeft(null)} className={cx("rounded-xl px-3 font-semibold text-slate-500", big ? "min-h-[64px]" : "min-h-[40px]")} aria-label="reset">↺</button>}
+      {left !== null && !running && <button onClick={() => setLeft(null)} className={cx("rounded-xl px-3 font-semibold text-ink-2", big ? "min-h-[64px]" : "min-h-[40px]")} aria-label="reset">↺</button>}
     </div>
   );
 }

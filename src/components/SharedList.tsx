@@ -9,7 +9,8 @@ import { useT, type TKey } from "@/lib/i18n";
 import { isChecked, sheetsApi, type SharedItem } from "@/lib/sheets";
 import { AISLE_ORDER, formatAmount, type ShoppingItem } from "@/lib/shopping";
 import type { Catalog } from "@/lib/catalog";
-import { Button, EmptyState, Input, cx } from "./ui";
+import { Button, EmptyState, Input, RoundCheck, cx } from "./ui";
+import { ProductPhoto } from "./RecipeCard";
 
 export function SharedList({ myItems, catalog }: { myItems: ShoppingItem[]; catalog: Catalog }) {
   const { t, l, lang } = useT();
@@ -54,7 +55,6 @@ export function SharedList({ myItems, catalog }: { myItems: ShoppingItem[]; cata
     return { id: i.ingredientId, produs: l(ing.name), cantitate: +i.amount.toFixed(2), unitate: ing.unit, raion: i.aisle };
   })), t("sh.pushed", { n: myItems.length }));
 
-  const nameOf = (it: SharedItem) => (catalog.ingMap[String(it.id)] ? `${catalog.ingMap[String(it.id)].emoji} ${l(catalog.ingMap[String(it.id)].name)}` : `📝 ${it.produs}`);
   const amountOf = (it: SharedItem) => {
     const n = Number(it.cantitate);
     if (!it.cantitate || Number.isNaN(n)) return String(it.cantitate ?? "");
@@ -69,9 +69,9 @@ export function SharedList({ myItems, catalog }: { myItems: ShoppingItem[]; cata
   return (
     <div>
       <div className="mb-4 flex flex-wrap gap-2">
-        <Button onClick={pushMine} disabled={busy || !myItems.length}>⬆️ {t("sh.pushMine")}</Button>
-        <Button variant="ghost" onClick={() => act(load)} disabled={busy}>🔄</Button>
-        {done > 0 && <Button variant="ghost" onClick={() => confirm(t("sh.clearConfirm")) && act(() => sheetsApi.clearChecked(cfg))} disabled={busy}>🧹 {t("sh.clear")}</Button>}
+        <Button onClick={pushMine} disabled={busy || !myItems.length}>{t("sh.pushMine")}</Button>
+        <Button variant="secondary" onClick={() => act(load)} disabled={busy} aria-label="refresh">↻</Button>
+        {done > 0 && <Button variant="ghost" onClick={() => confirm(t("sh.clearConfirm")) && act(() => sheetsApi.clearChecked(cfg))} disabled={busy}>{t("sh.clear")}</Button>}
       </div>
       <form className="mb-4 flex gap-2" onSubmit={(e) => { e.preventDefault(); if (newItem.trim()) { const n = newItem.trim(); setNewItem(""); act(() => sheetsApi.addItem(cfg, n)); } }}>
         <Input value={newItem} onChange={(e) => setNewItem(e.target.value)} placeholder={t("sh.addPlaceholder")} aria-label={t("common.add")} />
@@ -80,27 +80,29 @@ export function SharedList({ myItems, catalog }: { myItems: ShoppingItem[]; cata
       {note && <p className="mb-3 text-sm font-semibold text-brand-700 dark:text-brand-300" role="status">✓ {note}</p>}
       {err && <p className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">⚠️ {err}</p>}
 
-      {rows === null ? <p className="text-sm text-slate-500">{t("common.loading")}</p> : rows.length === 0 ? (
+      {rows === null ? <p className="text-sm text-ink-2">{t("common.loading")}</p> : rows.length === 0 ? (
         <EmptyState emoji="🧺" title={t("sh.emptyShared")} text={t("sh.emptySharedHint")} />
       ) : (
         <>
-          <p className="mb-3 text-sm font-semibold">{t("shop.checked", { a: done, b: rows.length })}</p>
-          <div className="space-y-5">
+          <p className="mb-3 px-1 text-[13px] text-ink-2">{t("shop.checked", { a: done, b: rows.length })}</p>
+          <div>
             {order.map((aisle) => (
-              <section key={aisle}>
-                <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-500">{AISLE_ORDER.includes(aisle as never) ? t(`aisle.${aisle}` as TKey) : aisle}</h3>
-                <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
+              <section key={aisle} className="mb-6">
+                <h3 className="mb-1.5 px-4 text-[13px] font-medium uppercase tracking-wide text-ink-2 dark:text-[#98989d]">{AISLE_ORDER.includes(aisle as never) ? t(`aisle.${aisle}` as TKey) : aisle}</h3>
+                <ul className="divide-y divide-black/[0.06] overflow-hidden rounded-2xl bg-white shadow-card dark:divide-white/10 dark:bg-[#1c1c1e] dark:shadow-none">
                   {groups[aisle].map((it) => {
                     const c = isChecked(it.bifat);
+                    const known = catalog.ingMap[String(it.id)];
                     return (
-                      <li key={String(it.id)}>
-                        <label className={cx("flex min-h-[56px] cursor-pointer items-center gap-3 px-3", c && "bg-slate-50 dark:bg-slate-950")}>
-                          <input type="checkbox" checked={c} onChange={() => toggle(it)} className="h-6 w-6 shrink-0 accent-brand-600" />
-                          <span className={cx("flex-1", c && "line-through opacity-50")}>
-                            <span className="font-semibold">{nameOf(it)}</span> <span className="text-sm text-slate-500">{amountOf(it)}</span>
-                          </span>
-                          {it.cine && <span className="shrink-0 text-xs text-slate-400">{it.cine}</span>}
-                        </label>
+                      <li key={String(it.id)} className="flex items-center gap-3 px-4 py-2.5">
+                        <RoundCheck checked={c} onChange={() => toggle(it)} label={String(it.produs)} />
+                        <button type="button" onClick={() => toggle(it)} className={cx("flex min-w-0 flex-1 items-center gap-3 text-left", c && "opacity-40")}>
+                          {known ? <ProductPhoto id={known.id} size={44} /> : <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#f5f5f7] text-xl dark:bg-[#2c2c2e]">📝</span>}
+                          <div className="min-w-0">
+                            <p className={cx("truncate text-[17px]", c && "line-through")}>{known ? l(known.name) : String(it.produs)}</p>
+                            <p className="truncate text-[13px] text-ink-2 dark:text-[#98989d]">{[amountOf(it), it.cine].filter(Boolean).join(" · ")}</p>
+                          </div>
+                        </button>
                       </li>
                     );
                   })}
@@ -110,7 +112,7 @@ export function SharedList({ myItems, catalog }: { myItems: ShoppingItem[]; cata
           </div>
         </>
       )}
-      <p className="mt-4 text-xs text-slate-500">ℹ️ {t("sh.sharedHint")}</p>
+      <p className="mt-4 text-xs text-ink-2">ℹ️ {t("sh.sharedHint")}</p>
     </div>
   );
 }

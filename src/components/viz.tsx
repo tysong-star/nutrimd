@@ -12,26 +12,26 @@ export function Ring({ value, max, label, sub, color = "#039855", size = 88, war
     <div className="flex flex-col items-center" role="img" aria-label={`${label}: ${Math.round(value)} / ${Math.round(max)}`}>
       <div className="relative" style={{ width: size, height: size }}>
         <svg width={size} height={size} className="-rotate-90">
-          <circle cx={size / 2} cy={size / 2} r={r} strokeWidth={8} fill="none" className="stroke-slate-200 dark:stroke-slate-800" />
+          <circle cx={size / 2} cy={size / 2} r={r} strokeWidth={8} fill="none" className="stroke-black/[0.06] dark:stroke-white/10" />
           <circle cx={size / 2} cy={size / 2} r={r} strokeWidth={8} fill="none" stroke={over ? "#e04f16" : color} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct)} style={{ transition: "stroke-dashoffset .6s" }} />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center leading-tight">
           <div className="text-sm font-bold tabular-nums">{Math.round(value)}</div>
-          <div className="text-[10px] text-slate-500 tabular-nums">/ {Math.round(max)}</div>
+          <div className="text-[10px] text-ink-2 tabular-nums">/ {Math.round(max)}</div>
         </div>
       </div>
       <div className="mt-1 text-xs font-semibold">{label}</div>
-      {sub && <div className="text-[11px] text-slate-500">{sub}</div>}
+      {sub && <div className="text-[11px] text-ink-2">{sub}</div>}
     </div>
   );
 }
 
-export function Bar({ value, max, label, unit, color = "bg-brand-500", warnOver = false }: { value: number; max: number; label: string; unit: string; color?: string; warnOver?: boolean }) {
+export function Bar({ value, max, label, unit, color = "bg-brand-500/100", warnOver = false }: { value: number; max: number; label: string; unit: string; color?: string; warnOver?: boolean }) {
   const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
   return (
     <div>
-      <div className="mb-1 flex justify-between text-xs"><span className="font-semibold">{label}</span><span className="tabular-nums text-slate-500">{Math.round(value)} / {Math.round(max)} {unit}</span></div>
-      <div className="h-2.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800" role="progressbar" aria-valuenow={Math.round(value)} aria-valuemax={Math.round(max)} aria-label={label}>
+      <div className="mb-1 flex justify-between text-xs"><span className="font-semibold">{label}</span><span className="tabular-nums text-ink-2">{Math.round(value)} / {Math.round(max)} {unit}</span></div>
+      <div className="h-2.5 overflow-hidden rounded-full bg-black/[0.05] dark:bg-white/10" role="progressbar" aria-valuenow={Math.round(value)} aria-valuemax={Math.round(max)} aria-label={label}>
         <div className={cx("h-full rounded-full transition-all", warnOver && value > max * 1.1 ? "bg-coral-500" : color)} style={{ width: `${pct}%` }} />
       </div>
     </div>
@@ -54,10 +54,10 @@ export function LineChart({ points, height = 160, unit = "", target }: { points:
       {points.map((p, i) => (
         <g key={i}>
           <circle cx={sx(i)} cy={sy(p.y)} r={4} className="fill-white stroke-brand-600" strokeWidth={2}><title>{`${p.x}: ${p.y} ${unit}`}</title></circle>
-          {(i === 0 || i === points.length - 1 || points.length <= 8) && <text x={sx(i)} y={H - 8} textAnchor="middle" className="fill-slate-500 text-[11px]">{p.x}</text>}
+          {(i === 0 || i === points.length - 1 || points.length <= 8) && <text x={sx(i)} y={H - 8} textAnchor="middle" className="fill-ink-2 text-[11px]">{p.x}</text>}
         </g>
       ))}
-      <text x={sx(points.length - 1)} y={sy(points.at(-1)!.y) - 10} textAnchor="end" className="fill-slate-700 text-[12px] font-semibold dark:fill-slate-200">{points.at(-1)!.y} {unit}</text>
+      <text x={sx(points.length - 1)} y={sy(points.at(-1)!.y) - 10} textAnchor="end" className="fill-ink text-[12px] font-semibold dark:fill-white">{points.at(-1)!.y} {unit}</text>
     </svg>
   );
 }
@@ -73,7 +73,7 @@ export function Columns({ data, height = 160, target, unit = "" }: { data: { x: 
         return (
           <g key={i}>
             <rect x={P + i * bw + bw * 0.18} y={H - P - h} width={bw * 0.64} height={h} rx={4} className={d.tone ?? "fill-brand-500"}><title>{`${d.x}: ${Math.round(d.y)} ${unit}`}</title></rect>
-            <text x={P + i * bw + bw / 2} y={H - 6} textAnchor="middle" className="fill-slate-500 text-[11px]">{d.x}</text>
+            <text x={P + i * bw + bw / 2} y={H - 6} textAnchor="middle" className="fill-ink-2 text-[11px]">{d.x}</text>
           </g>
         );
       })}

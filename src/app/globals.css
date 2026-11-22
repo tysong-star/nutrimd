@@ -4,8 +4,8 @@
 
 :root {
   color-scheme: light;
-  /* Fonturi de sistem: încărcare instant, suport complet pentru diacritice și chirilic. */
-  --font-sans: "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", system-ui, sans-serif;
+  /* Fontul sistemului: SF Pro pe iPhone/Mac, Segoe/Roboto în rest. */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 .dark {
   color-scheme: dark;
@@ -13,6 +13,8 @@
 
 html {
   -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.01em;
 }
 
 /* Respectă preferința de mișcare redusă (accesibilitate). */
@@ -25,6 +27,9 @@ html {
 
 .scrollbar-none::-webkit-scrollbar { display: none; }
 .scrollbar-none { scrollbar-width: none; }
+
+@keyframes sheet-up { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+.animate-sheet { animation: sheet-up .22s ease-out; }
 
 /* Export PDF al listei de cumpărături prin dialogul de imprimare. */
 @media print {

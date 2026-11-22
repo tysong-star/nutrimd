@@ -1,19 +1,19 @@
 "use client";
-import { recipeHref } from "@/lib/paths";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useCatalog } from "@/lib/catalog";
 import { useApp } from "@/lib/store";
 import { useT, type TKey } from "@/lib/i18n";
 import { calcTargets, dailyBudget, slotsFor } from "@/lib/nutrition";
 import { addDays, dayTotals, fitToBudget, generatePlan, isoDate, pickMeal, planCost, PORTION_STEPS } from "@/lib/planner";
 import { fastInfo } from "@/lib/fasting";
-import { dateLong, mdl, weekdayShort } from "@/lib/format";
+import { mdl } from "@/lib/format";
 import { uid } from "@/lib/random";
+import { recipeHref } from "@/lib/paths";
 import type { MealPlan, PlannedMeal, PlanDay } from "@/lib/types";
 import { RecipeImage } from "@/components/RecipeCard";
-import { Bar, Ring } from "@/components/viz";
-import { Button, Card, Chip, EmptyState, Select, Tag, Toggle, cx } from "@/components/ui";
+import { ActionList, Button, EmptyState, IconButton, ListGroup, Modal, PageHeader, RoundCheck, Segmented, Toggle, cx } from "@/components/ui";
+import { IconMore } from "@/components/icons";
 
 const SLOT_ORDER = ["breakfast", "snack1", "lunch", "snack2", "dinner", "snack3"];
 
@@ -23,235 +23,199 @@ export default function PlanPage() {
   const profile = useApp((s) => s.profile);
   const plan = useApp((s) => s.plan);
   const set = useApp((s) => s.set);
-  const journal = useApp((s) => s.journal);
-  const water = useApp((s) => s.water);
   const targets = calcTargets(profile);
   const today = isoDate(new Date());
-  const [view, setView] = useState<"day" | "week">("day");
   const [selected, setSelected] = useState(today);
+  const [days, setDays] = useState<"1" | "7">("7");
   const [mealPrep, setMealPrep] = useState(plan?.mealPrep ?? false);
-  const [days, setDays] = useState(7);
   const [clipboard, setClipboard] = useState<PlanDay | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
-  const [dragging, setDragging] = useState<{ date: string; uid: string } | null>(null);
+  const [planMenu, setPlanMenu] = useState(false);
+  const [mealMenu, setMealMenu] = useState<{ date: string; meal: PlannedMeal } | null>(null);
 
   const save = (p: MealPlan) => set({ plan: p });
-  const gen = () => {
-    save(generatePlan(catalog, profile, targets, today, days, mealPrep));
+  const gen = (mp = mealPrep, n = Number(days)) => {
+    save(generatePlan(catalog, profile, targets, today, n, mp));
     setSelected(today);
     setMsg(null);
   };
 
-  const cost = plan ? planCost(plan, catalog, profile.householdSize) : 0;
-  const budget = plan ? dailyBudget(profile) * plan.days.length : 0;
-  const shown = useMemo(() => {
-    if (!plan) return [];
-    return view === "day" ? plan.days.filter((d) => d.date === selected) : plan.days;
-  }, [plan, view, selected]);
-
   if (!plan || plan.days.length === 0) {
     return (
       <div>
-        <h1 className="mb-4 text-2xl font-extrabold tracking-tight">{t("plan.title")}</h1>
-        <EmptyState emoji="📅" title={t("home.noPlan")} text={t("home.noPlanText")} action={
-          <div className="flex flex-col items-center gap-3">
-            <div className="flex gap-2"><Chip active={days === 1} onClick={() => setDays(1)}>{t("plan.day")}</Chip><Chip active={days === 7} onClick={() => setDays(7)}>{t("plan.week")}</Chip></div>
-            <Toggle checked={mealPrep} onChange={setMealPrep} label={`🍱 ${t("plan.mealPrep")}`} />
-            <Button size="lg" onClick={gen}>✨ {t("plan.generate")}</Button>
+        <PageHeader title={t("plan.title")} />
+        <EmptyState emoji="🗓" title={t("home.noPlan")} text={t("home.noPlanText")} action={
+          <div className="flex w-72 flex-col gap-4">
+            <Segmented value={days} onChange={setDays} options={[{ value: "1", label: t("plan.day") }, { value: "7", label: t("plan.week") }]} />
+            <div className="rounded-2xl bg-white px-4 dark:bg-[#1c1c1e]"><Toggle checked={mealPrep} onChange={setMealPrep} label={t("plan.mealPrep")} /></div>
+            <Button size="lg" onClick={() => gen()}>{t("plan.generate")}</Button>
           </div>
         } />
       </div>
     );
   }
 
-  // ---------- operații pe plan ----------
+  const cost = planCost(plan, catalog, profile.householdSize);
+  const budget = dailyBudget(profile) * plan.days.length;
+  const day = plan.days.find((d) => d.date === selected) ?? plan.days[0];
+  const tot = dayTotals(day, catalog);
+  const f = fastInfo(day.date);
+  const meals = [...day.meals].sort((a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot));
+
+  // ---------- operații ----------
   const updateDay = (date: string, fn: (d: PlanDay) => PlanDay) => save({ ...plan, days: plan.days.map((d) => (d.date === date ? fn(d) : d)) });
   const updateMeal = (date: string, mUid: string, fn: (m: PlannedMeal) => PlannedMeal) => updateDay(date, (d) => ({ ...d, meals: d.meals.map((m) => (m.uid === mUid ? fn(m) : m)) }));
-
   const swap = (date: string, meal: PlannedMeal) => {
     const share = slotsFor(profile.mealsPerDay).find((s) => s.slot === meal.slot)?.share ?? 0.25;
     const recent = plan.days.flatMap((d) => d.meals.map((m) => m.recipeId));
     const next = pickMeal({ catalog, profile, targets, seed: uid() }, meal.slot, share, date, recent, [meal.recipeId]);
     if (next) updateMeal(date, meal.uid, () => ({ ...next, uid: meal.uid, slot: meal.slot }));
   };
-
   const move = (from: string, mUid: string, to: string) => {
-    if (from === to) return;
     const meal = plan.days.find((d) => d.date === from)?.meals.find((m) => m.uid === mUid);
-    if (!meal) return;
-    const hasTo = plan.days.some((d) => d.date === to);
-    const daysNext = plan.days.map((d) => d.date === from ? { ...d, meals: d.meals.filter((m) => m.uid !== mUid) } : d.date === to ? { ...d, meals: [...d.meals, { ...meal, eaten: false }] } : d);
-    if (!hasTo) daysNext.push({ date: to, meals: [{ ...meal, eaten: false }] });
-    save({ ...plan, days: daysNext.sort((a, b) => a.date.localeCompare(b.date)) });
+    if (!meal || from === to) return;
+    save({ ...plan, days: plan.days.map((d) => d.date === from ? { ...d, meals: d.meals.filter((m) => m.uid !== mUid) } : d.date === to ? { ...d, meals: [...d.meals, { ...meal, eaten: false }] } : d) });
   };
-
   const toggleEaten = (date: string, meal: PlannedMeal) => {
     const info = catalog.info[meal.recipeId];
-    const recipe = catalog.recipeMap[meal.recipeId];
     const st = useApp.getState();
-    if (meal.eaten) {
-      set({ journal: st.journal.filter((j) => j.refId !== meal.uid) });
-    } else {
-      const n = info.nutrition;
-      const k = meal.portions;
-      set({ journal: [...st.journal, { id: uid(), date, slot: meal.slot, name: l(recipe.title), source: "plan", refId: meal.uid,
+    if (meal.eaten) set({ journal: st.journal.filter((j) => j.refId !== meal.uid) });
+    else {
+      const n = info.nutrition, k = meal.portions;
+      set({ journal: [...st.journal, { id: uid(), date, slot: meal.slot, name: l(catalog.recipeMap[meal.recipeId].title), source: "plan", refId: meal.uid,
         nutrition: { kcal: n.kcal * k, protein: n.protein * k, carbs: n.carbs * k, fat: n.fat * k, fiber: n.fiber * k, sugar: n.sugar * k, salt: n.salt * k } }] });
     }
     updateMeal(date, meal.uid, (m) => ({ ...m, eaten: !m.eaten }));
   };
-
-  const paste = (to: string) => {
-    if (!clipboard) return;
-    updateDay(to, (d) => ({ ...d, meals: clipboard.meals.map((m) => ({ ...m, uid: uid(), eaten: false })) }));
-  };
-
   const copyWeek = () => {
     const last = plan.days.at(-1)!.date;
-    const src = plan.days.slice(-7);
-    const extra = src.map((d, i) => ({ date: addDays(last, i + 1), meals: d.meals.map((m) => ({ ...m, uid: uid(), eaten: false })) }));
-    save({ ...plan, days: [...plan.days, ...extra] });
+    save({ ...plan, days: [...plan.days, ...plan.days.slice(-7).map((d, i) => ({ date: addDays(last, i + 1), meals: d.meals.map((m) => ({ ...m, uid: uid(), eaten: false })) }))] });
   };
-
   const doFit = () => {
     const { plan: p, changes } = fitToBudget(plan, catalog, profile, targets);
     save(p);
     setMsg(changes ? t("plan.fitDone", { n: changes }) : t("plan.fitNone"));
   };
 
-  const consumedToday = journal.filter((j) => j.date === selected);
+  const pct = Math.min(100, (tot.kcal / targets.kcal) * 100);
+  const wd = (iso: string) => new Intl.DateTimeFormat(lang === "ro" ? "ro-MD" : "ru-MD", { weekday: "short" }).format(new Date(iso + "T12:00:00")).replace(".", "");
+  const setPortions = (delta: number) => {
+    if (!mealMenu) return;
+    const i = PORTION_STEPS.indexOf(mealMenu.meal.portions);
+    const p = PORTION_STEPS[Math.min(PORTION_STEPS.length - 1, Math.max(0, (i < 0 ? 2 : i) + delta))];
+    updateMeal(mealMenu.date, mealMenu.meal.uid, (m) => ({ ...m, portions: p }));
+    setMealMenu({ ...mealMenu, meal: { ...mealMenu.meal, portions: p } });
+  };
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-extrabold tracking-tight">{t("plan.title")}</h1>
-        <div className="flex flex-wrap gap-2">
-          <div className="flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
-            {(["day", "week"] as const).map((v) => (
-              <button key={v} onClick={() => setView(v)} aria-pressed={view === v} className={cx("min-h-[36px] rounded-lg px-3 text-sm font-semibold", view === v && "bg-white shadow dark:bg-slate-950")}>{t(v === "day" ? "plan.day" : "plan.week")}</button>
-            ))}
-          </div>
-          <Button variant="secondary" size="sm" onClick={gen}>🔄 {t("plan.regenerate")}</Button>
-          <Button variant="ghost" size="sm" onClick={copyWeek}>📋 {t("plan.copyWeek")}</Button>
-        </div>
-      </div>
+      <PageHeader title={t("plan.title")} actions={<IconButton label={t("plan.options")} onClick={() => setPlanMenu(true)}><IconMore width={22} height={22} /></IconButton>} />
 
-      <div className="mb-3 flex flex-wrap items-center gap-3 rounded-2xl bg-white p-3 text-sm shadow-sm dark:bg-slate-900">
-        <Toggle checked={plan.mealPrep} onChange={(v) => { setMealPrep(v); save(generatePlan(catalog, profile, targets, plan.days[0].date, plan.days.length, v)); }} label={`🍱 ${t("plan.mealPrep")}`} />
-        <span className="text-xs text-slate-500">{t("plan.mealPrepHint")}</span>
-        <span className="ml-auto font-semibold">{t("plan.cost")}: {mdl(cost, lang)} / {mdl(budget, lang)}</span>
-      </div>
-
-      {cost > budget * 1.02 && (
-        <div className="mb-3 flex flex-wrap items-center gap-3 rounded-2xl bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-900/30 dark:text-amber-100">
-          <span>💸 {t("plan.overBudget", { x: mdl(cost - budget, lang) })}</span>
-          <Button size="sm" variant="secondary" onClick={doFit}>{t("plan.fitBudget")}</Button>
-        </div>
-      )}
-      {msg && <p className="mb-3 rounded-xl bg-brand-50 p-3 text-sm dark:bg-brand-900/40" role="status">{msg}</p>}
-
-      {/* Selector de zile */}
-      <div className="scrollbar-none -mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1">
+      {/* Zilele */}
+      <div className="scrollbar-none -mx-4 mb-5 flex gap-1 overflow-x-auto px-4">
         {plan.days.map((d) => {
-          const f = fastInfo(d.date);
+          const sel = d.date === day.date;
           return (
-            <button key={d.date} onClick={() => { setSelected(d.date); setView("day"); }}
-              onDragOver={(e) => e.preventDefault()} onDrop={() => dragging && move(dragging.date, dragging.uid, d.date)}
-              className={cx("flex min-h-[64px] min-w-[64px] shrink-0 flex-col items-center justify-center rounded-2xl border-2 px-2 text-sm font-semibold capitalize",
-                selected === d.date && view === "day" ? "border-brand-600 bg-brand-600 text-white" : "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900",
-                d.date === today && selected !== d.date && "border-brand-400")}>
-              {weekdayShort(d.date, lang)}
-              {profile.diet === "orthodox_fast" && f.fasting && <span aria-label={t("diet.orthodox_fast")}>☦️</span>}
+            <button key={d.date} onClick={() => setSelected(d.date)} aria-pressed={sel} className="flex w-[46px] shrink-0 flex-col items-center gap-1 py-1">
+              <span className={cx("text-[12px] font-medium uppercase", d.date === today ? "text-brand-600" : "text-ink-2 dark:text-[#98989d]")}>{wd(d.date)}</span>
+              <span className={cx("flex h-9 w-9 items-center justify-center rounded-full text-[17px] font-semibold tabular-nums transition",
+                sel ? "bg-ink text-white dark:bg-white dark:text-black" : d.date === today ? "text-brand-600" : "")}>{Number(d.date.slice(8))}</span>
+              <span className={cx("h-1 w-1 rounded-full", profile.diet === "orthodox_fast" && fastInfo(d.date).fasting ? "bg-amber-500" : "bg-transparent")} />
             </button>
           );
         })}
       </div>
-      {view === "week" && <p className="mb-3 text-xs text-slate-500">↔️ {t("plan.dragHint")}</p>}
 
-      <div className={cx(view === "week" ? "grid gap-4 md:grid-cols-2 xl:grid-cols-3" : "")}>
-        {shown.map((day) => {
-          const tot = dayTotals(day, catalog);
-          const f = fastInfo(day.date);
-          const meals = [...day.meals].sort((a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot));
-          return (
-            <section key={day.date} onDragOver={(e) => e.preventDefault()} onDrop={() => dragging && move(dragging.date, dragging.uid, day.date)}
-              className={cx("rounded-3xl", view === "week" && "border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900")}>
-              <div className="mb-3 flex flex-wrap items-center gap-2">
-                <h2 className="text-lg font-bold capitalize">{dateLong(day.date, lang)}</h2>
-                {f.fasting && (profile.diet === "orthodox_fast" || view === "day") && <Tag tone="warm">☦️ {f.name ? l(f.name) : ""}{f.fishAllowed ? ` · 🐟 ${t("home.fishAllowed")}` : ""}</Tag>}
-                <div className="ml-auto flex gap-1">
-                  <Button size="sm" variant="ghost" onClick={() => setClipboard(day)} title={t("plan.copyDay")}>📄</Button>
-                  {clipboard && clipboard.date !== day.date && <Button size="sm" variant="secondary" onClick={() => paste(day.date)}>{t("plan.pasteDay")}</Button>}
-                </div>
+      {/* Sumar zi */}
+      <div className="mb-5 px-1">
+        <div className="flex items-baseline justify-between">
+          <p className="text-[28px] font-bold tabular-nums tracking-tight">{Math.round(tot.kcal)} <span className="text-[17px] font-medium text-ink-2">/ {targets.kcal} kcal</span></p>
+          <p className="text-[15px] text-ink-2 tabular-nums dark:text-[#98989d]">{mdl(tot.cost * profile.householdSize, lang, 0)}</p>
+        </div>
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-black/[0.06] dark:bg-white/10"><div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${pct}%` }} /></div>
+        <p className="mt-2 text-[13px] text-ink-2 tabular-nums dark:text-[#98989d]">
+          {t("macro.protein")} {Math.round(tot.protein)} g · {t("macro.carbs")} {Math.round(tot.carbs)} g · {t("macro.fat")} {Math.round(tot.fat)} g
+        </p>
+        {f.fasting && profile.diet === "orthodox_fast" && <p className="mt-1 text-[13px] text-amber-700 dark:text-amber-400">☦︎ {f.name ? l(f.name) : ""}{f.fishAllowed ? ` · ${t("home.fishAllowed")}` : ""}</p>}
+      </div>
+
+      {cost > budget * 1.02 && (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl bg-amber-500/10 px-4 py-3 text-[15px] text-amber-900 dark:text-amber-200">
+          <span>{t("plan.overBudget", { x: mdl(cost - budget, lang, 0) })}</span>
+          <Button size="sm" variant="secondary" onClick={doFit}>{lang === "ro" ? "Ajustează" : "Исправить"}</Button>
+        </div>
+      )}
+      {msg && <p className="mb-4 px-1 text-[15px] text-brand-700 dark:text-brand-400" role="status">{msg}</p>}
+
+      {meals.length === 0 ? <p className="py-10 text-center text-ink-2">{t("plan.empty2")}</p> : (
+        <ListGroup>
+          {meals.map((meal) => {
+            const r = catalog.recipeMap[meal.recipeId];
+            const info = catalog.info[meal.recipeId];
+            if (!r) return null;
+            return (
+              <div key={meal.uid} className={cx("flex items-center gap-3 px-4 py-3", meal.eaten && "opacity-50")}>
+                <Link href={recipeHref(r.id)} className="flex min-w-0 flex-1 items-center gap-3">
+                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl"><RecipeImage recipe={r} /></div>
+                  <div className="min-w-0">
+                    <p className="text-[12px] font-semibold uppercase tracking-wide text-ink-2 dark:text-[#98989d]">{t(`slot.${meal.slot}` as TKey)}{meal.portions !== 1 ? ` · ${meal.portions}×` : ""}</p>
+                    <p className="line-clamp-2 text-[17px] leading-snug">{l(r.title)}</p>
+                    <p className="text-[13px] text-ink-2 dark:text-[#98989d]">{Math.round(info.nutrition.kcal * meal.portions)} kcal · {info.totalMin} {t("common.min")}</p>
+                  </div>
+                </Link>
+                <RoundCheck checked={!!meal.eaten} onChange={() => toggleEaten(day.date, meal)} label={t("plan.markEaten")} />
+                <button onClick={() => setMealMenu({ date: day.date, meal })} aria-label={t("plan.mealOptions")} className="-mr-2 flex h-10 w-8 items-center justify-center text-ink-3"><IconMore width={20} height={20} /></button>
               </div>
+            );
+          })}
+        </ListGroup>
+      )}
+      <Link href="/recipes"><Button variant="ghost" className="w-full">＋ {t("plan.addMeal")}</Button></Link>
 
-              {view === "day" ? (
-                <Card className="mb-4">
-                  <div className="flex flex-wrap justify-around gap-3">
-                    <Ring value={tot.kcal} max={targets.kcal} label={t("macro.kcal")} color="#039855" warnOver />
-                    <Ring value={tot.protein} max={targets.protein} label={t("macro.protein")} color="#2e90fa" />
-                    <Ring value={tot.carbs} max={targets.carbs} label={t("macro.carbs")} color="#f79009" />
-                    <Ring value={tot.fat} max={targets.fat} label={t("macro.fat")} color="#d444f1" warnOver />
-                  </div>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <Bar value={tot.fiber} max={targets.fiber} label={t("macro.fiber")} unit="g" color="bg-lime-500" />
-                    <Bar value={water[day.date] ?? 0} max={targets.waterMl} label={`💧 ${t("macro.water")}`} unit="ml" color="bg-sky-500" />
-                  </div>
-                  {consumedToday.length > 0 && <p className="mt-3 text-xs text-slate-500">✓ {t("plan.eaten")}: {Math.round(consumedToday.reduce((s, j) => s + j.nutrition.kcal, 0))} kcal</p>}
-                  <p className="mt-1 text-xs text-slate-500">{t("plan.cost")}: {mdl(tot.cost * profile.householdSize, lang)}</p>
-                </Card>
-              ) : (
-                <div className="mb-3 space-y-1.5"><Bar value={tot.kcal} max={targets.kcal} label={t("macro.kcal")} unit="kcal" warnOver /><Bar value={tot.protein} max={targets.protein} label={t("macro.protein")} unit="g" color="bg-sky-500" /></div>
-              )}
+      <Modal open={planMenu} onClose={() => setPlanMenu(false)} title={t("plan.options")}>
+        <div className="space-y-4">
+          <div className="rounded-2xl bg-white px-4 dark:bg-[#2c2c2e]">
+            <Toggle checked={plan.mealPrep} onChange={(v) => { setMealPrep(v); gen(v, plan.days.length); }} label={t("plan.mealPrep")} />
+          </div>
+          <p className="-mt-2 px-1 text-[13px] text-ink-2">{t("plan.mealPrepHint")}</p>
+          <ActionList actions={[
+            { label: t("plan.regenerate"), onClick: () => { gen(plan.mealPrep, plan.days.length); setPlanMenu(false); } },
+            { label: t("plan.copyDay"), onClick: () => { setClipboard(day); setPlanMenu(false); } },
+            ...(clipboard && clipboard.date !== day.date ? [{ label: `${t("plan.pasteDay")} · ${wd(day.date)} ${Number(day.date.slice(8))}`, onClick: () => { updateDay(day.date, (d) => ({ ...d, meals: clipboard.meals.map((m) => ({ ...m, uid: uid(), eaten: false })) })); setPlanMenu(false); } }] : []),
+            { label: t("plan.copyWeek"), onClick: () => { copyWeek(); setPlanMenu(false); } },
+            { label: t("plan.fitBudget"), onClick: () => { doFit(); setPlanMenu(false); } },
+          ]} />
+          <p className="px-1 text-[13px] text-ink-2">{t("plan.cost")}: {mdl(cost, lang, 0)} / {mdl(budget, lang, 0)}</p>
+        </div>
+      </Modal>
 
-              <ul className="space-y-3">
-                {meals.map((meal) => {
-                  const r = catalog.recipeMap[meal.recipeId];
-                  const info = catalog.info[meal.recipeId];
-                  if (!r) return null;
-                  return (
-                    <li key={meal.uid} draggable onDragStart={() => setDragging({ date: day.date, uid: meal.uid })} onDragEnd={() => setDragging(null)}
-                      className={cx("flex gap-3 rounded-2xl border border-slate-200 bg-white p-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-900", meal.eaten && "opacity-60", view === "day" && "cursor-grab")}>
-                      <Link href={recipeHref(r.id)} className="h-20 w-20 shrink-0 overflow-hidden rounded-xl"><RecipeImage recipe={r} className="[&>span:first-child]:text-4xl" /></Link>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-300">
-                          {t(`slot.${meal.slot}` as TKey)}
-                          {meal.mealPrepGroup && <span title="meal prep">🍱</span>}
-                        </div>
-                        <Link href={recipeHref(r.id)} className="line-clamp-2 font-bold leading-snug hover:underline">{l(r.title)}</Link>
-                        <div className="mt-0.5 text-xs text-slate-500">{Math.round(info.nutrition.kcal * meal.portions)} kcal · P {Math.round(info.nutrition.protein * meal.portions)} g · {info.totalMin} min · {mdl(info.costPerServing * meal.portions, lang, 0)}</div>
-                        {view === "day" && (
-                          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                            <Button size="sm" variant="secondary" onClick={() => swap(day.date, meal)}>🔄 {t("plan.swap")}</Button>
-                            <Select aria-label={t("common.servings")} className="!min-h-[36px] !w-auto !py-0 text-sm" value={meal.portions}
-                              onChange={(e) => updateMeal(day.date, meal.uid, (m) => ({ ...m, portions: Number(e.target.value) }))}>
-                              {PORTION_STEPS.map((p) => <option key={p} value={p}>{t("plan.portions", { n: p })}</option>)}
-                            </Select>
-                            <Select aria-label={t("plan.moveTo")} className="!min-h-[36px] !w-auto !py-0 text-sm" value="" onChange={(e) => e.target.value && move(day.date, meal.uid, e.target.value)}>
-                              <option value="">{t("plan.moveTo")}</option>
-                              {plan.days.filter((d) => d.date !== day.date).map((d) => <option key={d.date} value={d.date}>{weekdayShort(d.date, lang)}</option>)}
-                            </Select>
-                            <button onClick={() => toggleEaten(day.date, meal)} aria-pressed={!!meal.eaten} className={cx("min-h-[36px] rounded-xl px-3 text-sm font-semibold", meal.eaten ? "bg-brand-600 text-white" : "bg-slate-100 dark:bg-slate-800")}>
-                              {meal.eaten ? `✓ ${t("plan.eaten")}` : t("plan.markEaten")}
-                            </button>
-                            <button onClick={() => updateDay(day.date, (d) => ({ ...d, meals: d.meals.filter((m) => m.uid !== meal.uid) }))} className="min-h-[36px] rounded-xl px-2 text-sm text-slate-500 hover:bg-red-50 hover:text-red-700" aria-label={t("common.delete")}>🗑</button>
-                          </div>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
-                {meals.length === 0 && <li className="rounded-2xl border border-dashed border-slate-300 p-4 text-center text-sm text-slate-500 dark:border-slate-700">{t("plan.empty")}</li>}
-              </ul>
-              {view === "day" && (
-                <Link href="/recipes" className="mt-3 block"><Button variant="ghost" className="w-full">＋ {t("plan.addMeal")}</Button></Link>
-              )}
-            </section>
-          );
-        })}
-      </div>
-      <div className="mt-6 text-center">
-        <Link href="/shopping"><Button size="lg">🛒 {t("shop.title")}</Button></Link>
-      </div>
+      <Modal open={!!mealMenu} onClose={() => setMealMenu(null)} title={mealMenu ? l(catalog.recipeMap[mealMenu.meal.recipeId]?.title) : ""}>
+        {mealMenu && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between rounded-2xl bg-white px-4 py-2 dark:bg-[#2c2c2e]">
+              <span className="text-[17px]">{t("common.servings")}</span>
+              <div className="flex items-center gap-3">
+                <IconButton label="-" onClick={() => setPortions(-1)}>−</IconButton>
+                <span className="w-10 text-center text-[17px] font-semibold tabular-nums">{mealMenu.meal.portions}×</span>
+                <IconButton label="+" onClick={() => setPortions(1)}>+</IconButton>
+              </div>
+            </div>
+            <ActionList actions={[
+              { label: t("plan.swap"), onClick: () => { swap(mealMenu.date, mealMenu.meal); setMealMenu(null); } },
+              { label: mealMenu.meal.eaten ? `✓ ${t("plan.eaten")}` : t("plan.markEaten"), onClick: () => { toggleEaten(mealMenu.date, mealMenu.meal); setMealMenu(null); } },
+            ]} />
+            <div>
+              <p className="mb-2 px-1 text-[13px] font-medium uppercase tracking-wide text-ink-2">{t("plan.moveTo")}</p>
+              <div className="flex flex-wrap gap-2">
+                {plan.days.filter((d) => d.date !== mealMenu.date).map((d) => (
+                  <button key={d.date} onClick={() => { move(mealMenu.date, mealMenu.meal.uid, d.date); setMealMenu(null); }} className="min-h-[36px] rounded-full bg-white px-3.5 text-[15px] dark:bg-[#2c2c2e]">{wd(d.date)} {Number(d.date.slice(8))}</button>
+                ))}
+              </div>
+            </div>
+            <ActionList actions={[{ label: t("common.delete"), danger: true, onClick: () => { updateDay(mealMenu.date, (d) => ({ ...d, meals: d.meals.filter((m) => m.uid !== mealMenu.meal.uid) })); setMealMenu(null); } }]} />
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

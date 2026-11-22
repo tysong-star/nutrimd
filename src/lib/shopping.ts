@@ -38,6 +38,22 @@ export function aggregatePlan(plan: MealPlan, catalog: Catalog, household: numbe
     .sort((a, b) => AISLE_ORDER.indexOf(a.aisle) - AISLE_ORDER.indexOf(b.aisle));
 }
 
+/** Adaugă în listă ingredientele rețetelor puse manual („Adaugă în listă” de pe pagina rețetei). */
+export function mergeExtras(items: ShoppingItem[], extras: { recipeId: string; items: { id: string; amount: number }[] }[], catalog: Catalog): ShoppingItem[] {
+  const map = new Map(items.map((i) => [i.ingredientId, { ...i, recipes: [...i.recipes] }]));
+  for (const ex of extras) {
+    for (const it of ex.items) {
+      const ing = catalog.ingMap[it.id];
+      if (!ing) continue;
+      const cur = map.get(it.id) ?? { ingredientId: it.id, amount: 0, aisle: ing.aisle, pantry: !!ing.pantry, recipes: [] };
+      cur.amount += it.amount;
+      if (!cur.recipes.includes(ex.recipeId)) cur.recipes.push(ex.recipeId);
+      map.set(it.id, cur);
+    }
+  }
+  return [...map.values()].sort((a, b) => AISLE_ORDER.indexOf(a.aisle) - AISLE_ORDER.indexOf(b.aisle));
+}
+
 export interface Pick { product: Product; packs: number; cost: number }
 
 /** Cea mai ieftină combinație de pachete dintr-un magazin pentru o cantitate. */

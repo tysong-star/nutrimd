@@ -21,8 +21,8 @@ function Shared() {
   if (!items.length) return <EmptyState emoji="🔗" title={t("shop.empty")} />;
   return (
     <div>
-      <h1 className="mb-1 text-2xl font-extrabold">{t("shop.shared")}</h1>
-      {cmp.cheapest && <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">{t("shop.cheapest")}: {cmp.cheapest.storeIds.map((s) => catalog.storeMap[s].name).join(" + ")} — {mdl(cmp.cheapest.total, lang)}</p>}
+      <h1 className="mb-1 pt-2 text-[34px] font-bold tracking-tight">{t("shop.shared")}</h1>
+      {cmp.cheapest && <p className="mb-4 text-sm text-ink-2 dark:text-[#98989d]">{t("shop.cheapest")}: {cmp.cheapest.storeIds.map((s) => catalog.storeMap[s].name).join(" + ")} — {mdl(cmp.cheapest.total, lang)}</p>}
       {cmp.cheapest && <ShoppingList items={items} picks={cmp.cheapest.picks} catalog={catalog} checked={checked} onToggle={(id) => setChecked({ ...checked, [id]: !checked[id] })} />}
     </div>
   );

@@ -47,7 +47,7 @@ export function PersonalSection() {
           <div className="grid gap-2">
             {ACTIVITIES.map((a) => (
               <button key={a} type="button" onClick={() => setProfile({ activity: a })} aria-pressed={p.activity === a}
-                className={`min-h-[48px] rounded-xl border px-4 text-left text-sm font-medium ${p.activity === a ? "border-brand-600 bg-brand-50 text-brand-900 dark:bg-brand-900/40 dark:text-brand-50" : "border-slate-300 dark:border-slate-700"}`}>
+                className={`min-h-[48px] rounded-xl border px-4 text-left text-sm font-medium ${p.activity === a ? "border-brand-600 bg-brand-500/100/10" : "border-black/10 dark:border-white/10"}`}>
                 {t(`act.${a}` as TKey)}
               </button>
             ))}
@@ -66,7 +66,7 @@ export function GoalSection() {
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       {GOALS.map((g) => (
         <button key={g.id} type="button" onClick={() => setProfile({ goal: g.id })} aria-pressed={p.goal === g.id}
-          className={`flex min-h-[96px] flex-col items-center justify-center gap-2 rounded-2xl border-2 p-3 text-center font-semibold transition ${p.goal === g.id ? "border-brand-600 bg-brand-50 dark:bg-brand-900/40" : "border-slate-200 hover:border-brand-400 dark:border-slate-800"}`}>
+          className={`flex min-h-[96px] flex-col items-center justify-center gap-2 rounded-2xl border-2 p-3 text-center font-semibold transition ${p.goal === g.id ? "border-brand-600 bg-brand-500/100/10" : "border-black/[0.06] hover:border-brand-400 dark:border-white/10"}`}>
           <span className="text-3xl" aria-hidden>{g.icon}</span>
           <span className="text-sm">{t(`goal.${g.id}` as TKey)}</span>
         </button>
@@ -90,11 +90,11 @@ export function TargetsSection() {
   return (
     <div>
       <div className="mb-4 grid grid-cols-3 gap-2 text-center text-sm">
-        <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800"><div className="text-xs text-slate-500">{t("prof.bmi")}</div><div className="text-lg font-bold">{bmi(p).toFixed(1)}</div></div>
-        <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800"><div className="text-xs text-slate-500">{t("prof.bmr")}</div><div className="text-lg font-bold">{Math.round(bmrMifflin(p))}</div></div>
-        <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800"><div className="text-xs text-slate-500">{t("prof.tdee")}</div><div className="text-lg font-bold">{Math.round(tdee(p))}</div></div>
+        <div className="rounded-xl bg-slate-50 p-3 dark:bg-white/10"><div className="text-xs text-ink-2">{t("prof.bmi")}</div><div className="text-lg font-bold">{bmi(p).toFixed(1)}</div></div>
+        <div className="rounded-xl bg-slate-50 p-3 dark:bg-white/10"><div className="text-xs text-ink-2">{t("prof.bmr")}</div><div className="text-lg font-bold">{Math.round(bmrMifflin(p))}</div></div>
+        <div className="rounded-xl bg-slate-50 p-3 dark:bg-white/10"><div className="text-xs text-ink-2">{t("prof.tdee")}</div><div className="text-lg font-bold">{Math.round(tdee(p))}</div></div>
       </div>
-      <p className="mb-3 text-sm text-slate-600 dark:text-slate-400">{t("ob.autoCalc")}</p>
+      <p className="mb-3 text-sm text-ink-2 dark:text-[#98989d]">{t("ob.autoCalc")}</p>
       <Toggle checked={manual} label={t("prof.manual")} onChange={(v) => { setManual(v); if (!v) setProfile({ manualTargets: undefined }); }} />
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
         {fields.map((f) => (

@@ -53,7 +53,7 @@ export function SheetsSettings() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-slate-600 dark:text-slate-400">{t("sh.intro")}</p>
+      <p className="text-sm text-ink-2 dark:text-[#98989d]">{t("sh.intro")}</p>
       <Field label={t("sh.url")} hint="https://script.google.com/macros/s/…/exec">
         <Input value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} inputMode="url" autoCapitalize="off" autoCorrect="off" />
       </Field>
@@ -67,21 +67,21 @@ export function SheetsSettings() {
       </div>
 
       {sheetsReady(sheets) && (
-        <div className="space-y-4 border-t border-slate-100 pt-4 dark:border-slate-800">
+        <div className="space-y-4 border-t border-black/[0.06] pt-4 dark:border-white/10">
           <div>
             <div className="mb-1 text-sm font-semibold">💰 {t("sh.prices")}</div>
-            <p className="mb-2 text-xs text-slate-500">
+            <p className="mb-2 text-xs text-ink-2">
               {sheets.lastPriceSync ? t("sh.lastSync", { d: dateShort(sheets.lastPriceSync, lang), n: sheets.lastPriceCount ?? 0 }) : t("sh.never")}
             </p>
             <Button variant="secondary" onClick={sync} disabled={busy}>⬇️ {t("sh.syncNow")}</Button>
             <div className="mt-3">
               <Toggle checked={!!sheets.onlyMine} onChange={(v) => set({ sheets: { ...sheets, onlyMine: v } })} label={t("sh.onlyMine")} />
-              <p className="text-xs text-slate-500">{t("sh.onlyMineHint")}</p>
+              <p className="text-xs text-ink-2">{t("sh.onlyMineHint")}</p>
             </div>
           </div>
           <div>
             <div className="mb-1 text-sm font-semibold">📋 {t("sh.seedTitle")}</div>
-            <p className="mb-2 text-xs text-slate-500">{t("sh.seedHint")}</p>
+            <p className="mb-2 text-xs text-ink-2">{t("sh.seedHint")}</p>
             <div className="mb-2 flex flex-wrap gap-2">
               {base.stores.map((s) => <Chip key={s.id} active={seedStores.includes(s.id)} onClick={() => setSeedStores(seedStores.includes(s.id) ? seedStores.filter((x) => x !== s.id) : [...seedStores, s.id])}>{s.name}</Chip>)}
             </div>
@@ -89,7 +89,7 @@ export function SheetsSettings() {
           </div>
         </div>
       )}
-      {busy && <p className="text-sm text-slate-500">{t("common.loading")}</p>}
+      {busy && <p className="text-sm text-ink-2">{t("common.loading")}</p>}
       {msg && <p role="status" className={msg.ok ? "text-sm font-semibold text-brand-700 dark:text-brand-300" : "text-sm font-semibold text-red-600"}>{msg.ok ? "✓ " : "⚠️ "}{msg.text}</p>}
     </div>
   );

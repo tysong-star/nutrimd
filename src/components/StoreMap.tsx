@@ -37,10 +37,10 @@ export function StoreMap({ city, stores }: { city: string; stores: Store[] }) {
         {err && <span className="text-xs text-red-600">{err}</span>}
       </div>
       {f && (
-        <iframe title={f.label} loading="lazy" className="h-56 w-full rounded-2xl border border-slate-200 dark:border-slate-800"
+        <iframe title={f.label} loading="lazy" className="h-56 w-full rounded-2xl border border-black/[0.06] dark:border-white/10"
           src={`https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${f.lat},${f.lng}`} />
       )}
-      <ul className="mt-3 divide-y divide-slate-100 dark:divide-slate-800">
+      <ul className="mt-3 divide-y divide-black/[0.06] dark:divide-white/10">
         {nearest.map((l, i) => {
           const s = stores.find((x) => x.id === l.storeId)!;
           return (
@@ -48,14 +48,14 @@ export function StoreMap({ city, stores }: { city: string; stores: Store[] }) {
               <button onClick={() => setFocus(i)} className="flex min-h-[48px] w-full items-center gap-3 text-left text-sm">
                 <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: s.color }} />
                 <span className="flex-1 font-medium">{l.label}</span>
-                <span className="tabular-nums text-slate-500">{t("shop.km", { x: l.d.toFixed(1) })}</span>
+                <span className="tabular-nums text-ink-2">{t("shop.km", { x: l.d.toFixed(1) })}</span>
                 <a href={`https://www.openstreetmap.org/directions?to=${l.lat},${l.lng}`} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-brand-700 dark:text-brand-300" aria-label="route">🧭</a>
               </button>
             </li>
           );
         })}
       </ul>
-      <p className="mt-2 text-xs text-slate-500">ℹ️ Locațiile sunt demonstrative. / Адреса демонстрационные.</p>
+      <p className="mt-2 text-xs text-ink-2">ℹ️ Locațiile sunt demonstrative. / Адреса демонстрационные.</p>
     </div>
   );
 }

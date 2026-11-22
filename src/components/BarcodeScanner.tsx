@@ -57,7 +57,7 @@ export function BarcodeScanner({ onCode }: { onCode: (code: string) => void }) {
             <Button size="sm" variant="secondary" className="absolute bottom-2 right-2" onClick={() => setActive(false)}>{t("common.close")}</Button>
           </div>
         ) : <Button onClick={() => setActive(true)}>📷 {t("prog.scan")}</Button>
-      ) : <p className="text-sm text-slate-500">{t("prog.scanUnsupported")}</p>}
+      ) : <p className="text-sm text-ink-2">{t("prog.scanUnsupported")}</p>}
       {error && <p className="text-sm text-red-600">{error}</p>}
       <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); if (manual.trim()) onCode(manual.trim()); }}>
         <Input inputMode="numeric" placeholder={t("prog.barcode")} value={manual} onChange={(e) => setManual(e.target.value)} aria-label={t("prog.barcode")} />
