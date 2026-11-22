@@ -290,7 +290,8 @@ function decodeHtml_(s) {
 }
 
 function plain_(s) {
-  return String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ş/g, 's').replace(/ţ/g, 't');
+  // elimină diacriticele: ă→a, ș→s, ț→t, î→i (inclusiv variantele cu sedilă ş/ţ)
+  return String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\u015f/g, 's').replace(/\u0163/g, 't');
 }
 
 /** Reguli: [ingredient, se potrivește, exclude]. Ordinea contează (cele specifice întâi). */
