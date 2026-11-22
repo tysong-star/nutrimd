@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  /* Fonturi de sistem: încărcare instant, suport complet pentru diacritice și chirilic. */
+  --font-sans: "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", system-ui, sans-serif;
+}
+.dark {
+  color-scheme: dark;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Respectă preferința de mișcare redusă (accesibilitate). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-none { scrollbar-width: none; }
+
+/* Export PDF al listei de cumpărături prin dialogul de imprimare. */
+@media print {
+  .no-print { display: none !important; }
+  body { background: white !important; color: black !important; }
+  main { padding: 0 !important; max-width: none !important; }
+  .print-break { break-inside: avoid; }
+}
