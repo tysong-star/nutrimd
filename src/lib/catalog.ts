@@ -12,7 +12,9 @@ import type { Ingredient, Product, Profile, Recipe, RecipeInfo, Store } from "./
 import { computeRecipeInfo, findSubstitute, ingredientConflict, subAmount, type PriceIndex } from "./recipeInfo";
 import { useApp, type AdminState } from "./store";
 
-export const effectivePrice = (p: Product) => (p.promoPrice && p.promoUntil && new Date(p.promoUntil) > new Date() ? p.promoPrice : p.price);
+/** Prețul de azi: promoția contează dacă nu are dată de final sau dacă nu a expirat (sfârșitul zilei). */
+export const effectivePrice = (p: Product) =>
+  p.promoPrice && (!p.promoUntil || new Date(p.promoUntil.length === 10 ? p.promoUntil + "T23:59:59" : p.promoUntil) > new Date()) ? p.promoPrice : p.price;
 
 export interface Catalog {
   ingredients: Ingredient[];
