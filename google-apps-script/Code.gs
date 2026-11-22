@@ -275,7 +275,7 @@ function parseCroco_(html) {
     var exp = /Expiră\s+(?:în\s+(\d+)\s+zile|(azi)|(mâine))/.exec(body);
     var days = exp ? (exp[1] ? Number(exp[1]) : exp[2] ? 0 : 1) : null;
     var n = decodeHtml_(name[1]);
-    var s = store ? decodeHtml_(store[1]) : '';
+    var s = storeFromUrl_(m[1]) || (store ? decodeHtml_(store[1]) : '');
     out.push({
       key: s + '|' + n, name: n, store: s, url: m[1],
       price: Number(price[1].replace(',', '.')), old: old ? Number(old[1].replace(',', '.')) : null,
@@ -283,6 +283,22 @@ function parseCroco_(html) {
     });
   }
   return out;
+}
+
+/** Magazinul din linkul catalogului: /catalog/kaufland-oferta-… → „Kaufland”. */
+var CROCO_STORES = [
+  ['nr1', 'Nr1'], ['linella', 'Linella'], ['kaufland', 'Kaufland'], ['metro', 'Metro'], ['fidesco', 'Fidesco'],
+  ['green-hills', 'Green Hills'], ['family-market', 'Family Market'], ['jardi', 'Jardi'], ['local', 'Local'],
+  ['cip-market', 'CIP Market'], ['bonus', 'Bonus'], ['alcomarket', 'Alcomarket'], ['rogob', 'Rogob'], ['slavena', 'Slavena'],
+];
+
+function storeFromUrl_(url) {
+  var m = /\/catalog\/([^?#]+)/.exec(url);
+  if (!m) return '';
+  var slug = '-' + m[1].toLowerCase() + '-';
+  for (var i = 0; i < CROCO_STORES.length; i++) if (slug.indexOf('-' + CROCO_STORES[i][0] + '-') >= 0) return CROCO_STORES[i][1];
+  var first = m[1].split(/-(?:promo|catalog|oferta|oferte|reduceri|revista)/)[0];
+  return first ? first.replace(/-/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); }) : '';
 }
 
 function decodeHtml_(s) {
