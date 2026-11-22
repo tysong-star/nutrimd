@@ -11,17 +11,23 @@ import { cx } from "./ui";
 import { IconHeart } from "./icons";
 
 /** Fotografia reală a unui produs; dacă nu există sau nu se încarcă, emoji-ul ingredientului. */
-export function ProductPhoto({ id, size = 44, className, medium }: { id: string; size?: number; className?: string; medium?: boolean }) {
+export function ProductPhoto({ id, size = 44, className, medium, src }: { id: string; size?: number; className?: string; medium?: boolean; src?: string }) {
   const ing = INGREDIENT_MAP[id];
-  const url = photoUrl(id, medium || size > 100 ? "medium" : "small");
-  const [failed, setFailed] = useState(false);
+  // Poza din catalogul magazinului (Croco) are prioritate; dacă nu se încarcă → fotografia
+  // generică a ingredientului; dacă nici aceea → emoji.
+  const generic = photoUrl(id, medium || size > 100 ? "medium" : "small");
+  const sources = [src, generic].filter(Boolean) as string[];
+  const [idx, setIdx] = useState(0);
+  const url = sources[idx];
+  const failed = !url;
+  const setFailed = () => setIdx((i) => i + 1);
   const lang = useApp((s) => s.lang);
   const alt = ing ? ing.name[lang] : id;
   return (
     <span className={cx("inline-flex shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#f5f5f7] dark:bg-[#2c2c2e]", className)} style={{ width: size, height: size }}>
       {url && !failed
         // eslint-disable-next-line @next/next/no-img-element
-        ? <img src={url} alt={alt} loading="lazy" decoding="async" onError={() => setFailed(true)} className="h-[86%] w-[86%] object-contain" />
+        ? <img src={url} alt={alt} loading="lazy" decoding="async" onError={setFailed} referrerPolicy="no-referrer" className="h-[86%] w-[86%] object-contain" />
         : <span aria-label={alt} role="img" style={{ fontSize: size * 0.5 }}>{ing?.emoji ?? "🛒"}</span>}
     </span>
   );

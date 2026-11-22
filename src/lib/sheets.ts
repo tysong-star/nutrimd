@@ -6,7 +6,8 @@
  * (fără Content-Type JSON) — cererea rămâne „simplă” și răspunsul vine cu CORS permis.
  */
 import { useApp } from "./store";
-import type { Product } from "./types";
+import type { Product, Store } from "./types";
+import { STORES } from "@/data/stores";
 import { applyImport, rowsFromRecords } from "./importer";
 
 export interface SheetsConfig {
@@ -69,6 +70,17 @@ export async function syncPrices(existing: Product[], emojiFor: (id: string) => 
   const cfg = st.sheets;
   if (!sheetsReady(cfg)) throw new Error("Google Sheets nu e configurat");
   const { rows } = await sheetsApi.prices(cfg);
+  // Magazine noi apărute în tabel (ex. din cataloagele Croco: Jardi, Bonus…) — le adăugăm automat.
+  const known = new Set([...STORES.map((s) => s.id), ...st.admin.customStores.map((s) => s.id)]);
+  const newStores: Store[] = [];
+  for (const r of rows) {
+    const id = String(r.store_id ?? "").trim();
+    if (id && !known.has(id)) {
+      known.add(id);
+      newStores.push({ id, name: String(r.store_name || id), color: "#8e8e93", cities: ["Chișinău"], priceFactor: 1, source: "feed" });
+    }
+  }
+  if (newStores.length) st.setAdmin((a) => ({ customStores: [...a.customStores, ...newStores] }));
   const { rows: parsed, errors } = rowsFromRecords(rows);
   // Data din Sheet (updated_at) e păstrată ca „ultima actualizare” afișată lângă preț.
   const { overrides, created } = applyImport(parsed, existing, emojiFor);

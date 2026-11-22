@@ -30,7 +30,7 @@ export function ShoppingList({ items, picks, catalog, checked, onToggle, extraId
                 <li key={it.ingredientId} className="flex items-center gap-3 px-4 py-2.5">
                   <RoundCheck checked={done} onChange={() => onToggle(it.ingredientId)} label={l(ing.name)} />
                   <button type="button" onClick={() => onToggle(it.ingredientId)} className={cx("flex min-w-0 flex-1 items-center gap-3 text-left transition", done && "opacity-40")}>
-                    <ProductPhoto id={ing.id} size={44} />
+                    <ProductPhoto id={ing.id} size={44} src={p?.image} />
                     <div className="min-w-0">
                       <p className={cx("truncate text-[17px] leading-snug", done && "line-through")}>{l(ing.name)}</p>
                       <p className="truncate text-[13px] text-ink-2 dark:text-[#98989d]">

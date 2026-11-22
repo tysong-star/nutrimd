@@ -156,7 +156,7 @@ function RecipeDetail() {
               return (
                 <ListRow key={it.ingredientId} onClick={() => setAtHome(home ? atHome.filter((x) => x !== it.ingredientId) : [...atHome, it.ingredientId])}
                   className={cx(home && "opacity-40")}
-                  left={<ProductPhoto id={ing.id} size={44} />}
+                  left={<ProductPhoto id={ing.id} size={44} src={p?.image} />}
                   title={<span className={cx(home && "line-through")}>{p ? p.name : l(ing.name)}</span>}
                   subtitle={home ? t("rec.atHome") : p ? `${catalog.storeMap[p.storeId]?.name} · ${p.byWeight ? formatAmount(pick!.packs * p.packSize, ing.unit, lang) : `${p.packLabel}${pick!.packs > 1 ? ` × ${pick!.packs}` : ""}`}` : t("shop.outOfStock")}
                   right={!home && pick ? <span className="tabular-nums text-ink dark:text-white">{mdl(pick.cost, lang)}</span> : undefined} />
