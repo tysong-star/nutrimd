@@ -310,57 +310,66 @@ function plain_(s) {
   return String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\u015f/g, 's').replace(/\u0163/g, 't');
 }
 
+/** Produse preparate/procesate care nu sunt ingrediente de bază (se ignoră). */
+var CROCO_SKIP = /pelmeni|pelimeni|coltunas|placint|inghetat|ficat|\bicre\b|\bpate\b|clatit|prajitur|humus|maionez|zacusc|fidea|instant|ramen|topit|crema de branza|\balge\b|nugget|nughete|pizza|ravioli|parjoal|chiftel|wraps|pesmet|ciabatta|imitati|tartin|dulceat|\bgem\b|ketchup|desert|glazurat|surimi|frigarui|\bmici\b|carnaci|carnat|cevapcici|burger|pudding|granola|cereale|tocana|iahnie|adjik|sos de rosii|\bin sos\b/;
+
 /** Reguli: [ingredient, se potrivește, exclude]. Ordinea contează (cele specifice întâi). */
 var CROCO_RULES = [
-  ['sweet_potato', /cartof\w* dulc|batat/], ['potato', /\bcartof/, /dulc|chips|pai|piure|prajit|congel|fri|snack/],
+  ['sweet_potato', /cartof\w* dulc|batat/, /pai/], ['potato', /\bcartof/, /dulc|chips|pai|piure|prajit|congel|fri|snack/],
   ['green_onion', /ceapa verde/], ['onion', /\bceapa\b/, /prajit|praf|chips|crocant/],
-  ['garlic', /\busturoi\b/, /praf|sos|granul|uscat/], ['carrot', /\bmorcov/, /suc|coreean|salat|piure/],
+  ['garlic', /\busturoi\b/, /praf|sos|granul|uscat/], ['carrot', /\bmorcov/, /suc|coreean|salat|piure|varza/],
   ['beet', /sfecl/, /suc|salat|zahar/], ['sauerkraut', /varza murat/],
-  ['cabbage', /\bvarza\b/, /murat|calit|salat|rosie|chinez|bruxelles|sarmal/],
-  ['canned_tomato', /(rosii|tomate) (decojite|in suc|tocate|cuburi)/], ['tomato_paste', /past[ae] de tomate|bulion\b/],
-  ['tomato', /\brosii\b|\btomate\b/, /past|suc|sos|ketchup|conserv|uscat|marinat|murat/],
-  ['cucumber', /castrave/, /murat|marinat|conserv/], ['bell_pepper', /ardei/, /iute|boia|praf|umplut|conserv|marinat|copt|chili/],
-  ['eggplant', /vinet/, /salat|icre|caviar|conserv|zacusca/], ['zucchini', /dovlecel/, /icre|caviar|conserv|chips/],
+  ['cabbage', /\bvarza\b/, /murat|calit|salat|rosie|chinez|bruxelles|sarmal|morcov/],
+  ['canned_tomato', /(rosii|tomate) (de?s?cojite|in suc|tocate|cuburi)|tomate cuburi|piure de tomate|passata/],
+  ['tomato_paste', /past[ae] de (tomate|rosii)|bulion\b/],
+  ['tomato', /\brosii\b|\btomate\b/, /past|suc|sos|ketchup|conserv|uscat|marinat|murat|cherry|\bton\b|gratar/],
+  ['cucumber', /castrave/, /murat|marinat|conserv|salat/],
+  ['bell_pepper', /ardei/, /iute|boia|praf|umplut|conserv|marinat|murat|copt|chili|pasta|condimente/],
+  ['eggplant', /vinet/, /salat|caviar|conserv|gratar/], ['zucchini', /dovlecel/, /caviar|conserv|chips/],
   ['pumpkin', /\bdovleac/, /seminte|ulei|suc/], ['broccoli', /broccoli/], ['cauliflower', /conopid/],
   ['spinach', /spanac/], ['lettuce', /salata (verde|iceberg|romana|frunze)|\biceberg\b/],
-  ['mushrooms', /ciuperc|champignon/, /conserv|marinat|sos|supa|pate/], ['dill', /\bmarar\b/], ['parsley', /patrunjel/],
+  ['mushrooms', /ciuperc|champignon|sampinion/, /conserv|marinat|sos|supa|cons\.|taiate|intregi|in sortiment/], ['dill', /\bmarar\b/], ['parsley', /patrunjel/],
   ['celery', /telina/, /sare/], ['avocado', /avocado/, /ulei|sos/], ['green_beans', /fasole verde|pastai/],
-  ['green_peas', /mazare/, /conserv|chips/], ['corn', /porumb dulce|porumb.*conserv/],
-  ['apple', /\bmer[ei]\b/, /suc|chips|piure|uscat|otet|placint/], ['banana', /banan/, /chips|piure|suc|baton/],
-  ['lemon', /\blama/, /suc|sos|ceai|bautur/], ['orange', /portocal/, /suc|nectar|gem|ceai|bautur/],
-  ['berries', /fructe de padure|\bafine|zmeur/, /gem|ceai|suc|iaurt|ciocolat/], ['plums_dried', /prune uscat/], ['raisins', /stafid/],
+  ['green_peas', /mazare/, /chips/], ['corn', /porumb dulce|porumb.*conserv/],
+  ['apple', /\bmer[ei]\b/, /suc|chips|piure|uscat|otet/], ['banana', /banan/, /chips|piure|suc|baton/],
+  ['lemon', /\blama/, /suc|sos|ceai|bautur|masline|frunze/], ['orange', /portocal/, /suc|nectar|ceai|bautur/],
+  ['berries', /fructe de padure|\bafine|zmeur/, /ceai|suc|iaurt|ciocolat/], ['plums_dried', /prune uscat/], ['raisins', /stafid/],
   ['eggs', /\boua\b/, /ciocolat|kinder|surpriz/],
-  ['oat_milk', /(bautura|lapte).*ovaz/], ['coconut_milk', /lapte de cocos/],
-  ['milk', /\blapte\b/, /praf|condens|ciocolat|soia|migdal|batut|copii|bebe|vegetal|cocos|ovaz|baton|crem/],
+  ['oat_milk', /(bautura|lapte).*ovaz/], ['coconut_milk', /lapte (de )?cocos/],
+  ['milk', /\blapte\b/, /praf|condens|ciocolat|soia|migdal|batut|copii|bebe|vegetal|cocos|ovaz|baton|crem|cafea|covasit|branza|gouda|frisc/],
   ['kefir', /chefir|kefir/], ['greek_yogurt', /iaurt grecesc/], ['soy_yogurt', /iaurt.*soia/],
-  ['cottage_cheese', /branza de vaci|\bcas\b/, /desert|glazur|cascaval|baton/],
+  ['cottage_cheese', /branza (proaspata )?de vaci|\bcas\b/, /cascaval/],
   ['feta', /\bfeta\b/], ['parmesan', /parmez|parmigian|grana padano/], ['mozzarella', /mozzarel/],
-  ['sheep_cheese', /branza de oi|telemea|brinza|bryndza/], ['hard_cheese', /cascaval/, /afumat|topit/],
-  ['sour_cream', /smantan/, /sos|inghetat/], ['peanut_butter', /(unt|pasta) de arahide/], ['butter', /\bunt\b/, /cacao|arahide/],
-  ['chicken_breast', /(piept|file|fileu) de pui/], ['chicken_thigh', /pulp\w* de pui|copan/], ['chicken_whole', /pui intreg|carcasa de pui|\bgaina\b/],
-  ['turkey', /curcan/, /salam|parizer|crenvurst|sunca|carnat/], ['minced_meat', /carne tocat|tocatura/],
-  ['beef', /\bvita\b/, /mici|carnat|salam|tocat|crenvurst|parizer|conserv|sunca|bulion|pate|porc/],
+  ['sheep_cheese', /branza (bulgareasca )?de oa?i|telemea|brinza|bryndza/], ['hard_cheese', /cascaval|gouda|edam|\bolanda\b/, /afumat/],
+  ['peanut_butter', /(unt|pasta) de arahide/], ['butter', /\bunt\b/, /cacao|arahide/],
+  ['sour_cream', /smantan/, /\bunt\b|branza|crema|spuma/],
+  ['minced_meat', /carne tocat|tocatur/],
+  ['chicken_breast', /(piept|file|fileu) de pui/], ['chicken_thigh', /pulp\w* de pui|copan|gamb\w* de pui|sold de pui/],
+  ['chicken_whole', /pui intreg|carcasa de pui|\bgaina\b/, /conserv|rasol/],
+  ['turkey', /curcan/, /salam|parizer|crenvurst|sunca/],
+  ['beef', /(carne|pulpa|muschi|file|antricot|cotlet|fleica|spata) de vita/],
   ['pork_lean', /(muschi|cotlet|file) de porc/, /afumat|marinat/],
-  ['salmon', /somon/, /afumat|sarat|icre|conserv|pate/], ['cod', /\bcod\b|merluciu|\bhek\b|\bhake\b/],
-  ['mackerel', /scrumbie|macrou/, /conserv|afumat|sarat/], ['tuna_can', /\bton\b/], ['shrimp', /crevet/],
+  ['salmon', /somon/, /afumat|sarat|conserv|in ulei|asorti/], ['cod', /\bcod\b|merluciu|\bhek\b|\bhake\b/],
+  ['mackerel', /scrumbie|macrou/, /conserv|afumat|sarat|in sos|asorti/], ['tuna_can', /\bton\b/], ['shrimp', /crevet/, /pasta|pane/],
   ['cornmeal', /malai|faina de porumb/], ['brown_rice', /orez (brun|integral)/], ['rice_noodles', /taitei de orez/],
-  ['rice', /\borez\b/, /brun|integral|lapte|taitei|faina|biscuit|vafe|napolitan|chips/], ['buckwheat', /hrisc/],
+  ['rice', /\borez\b/, /brun|integral|lapte|taitei|faina|biscuit|vafe|napolitan|chips|ovaz/], ['buckwheat', /hrisc/, /bautur/],
   ['oats', /fulgi de ovaz|\bovaz\b/, /lapte|bautura|biscuit|baton/], ['quinoa', /quinoa/], ['bulgur', /bulgur/],
-  ['pasta_wholegrain', /\bpaste\b|spaghet|penne|fusilli|macaroan|farfalle/, /de tomate|de dinti|pasta de/],
+  ['pasta_wholegrain', /\bpaste\b|spaghet|penne|fusilli|macaroan|farfalle/, /de tomate|de dinti|pasta de|branza/],
   ['gf_flour', /faina fara gluten/], ['flour', /\bfaina\b/, /porumb|orez|ovaz|fara gluten/],
   ['wholegrain_bread', /paine integral/], ['lavash', /lavas|lipie/],
   ['white_beans', /fasole alba/], ['red_lentils', /\blinte/], ['chickpeas', /\bnaut/], ['tofu', /tofu/], ['soy_sauce', /sos de soia/],
-  ['walnuts', /\bnuci\b|miez de nuc/, /cocos|caju|ciocolat/], ['almonds', /migdal/, /lapte|bautura|ciocolat/], ['tahini', /tahini/],
+  ['walnuts', /\bnuci\b|miez de nuc/, /cocos|caju|ciocolat|ulei/], ['almonds', /migdal/, /lapte|bautura|ciocolat/], ['tahini', /tahini/],
   ['sunflower_seeds', /seminte de floarea/], ['pumpkin_seeds', /seminte de dovleac/], ['chia', /\bchia\b/], ['sesame', /\bsusan\b/],
-  ['sunflower_oil', /ulei de floarea/], ['olive_oil', /ulei de masline/], ['salt', /\bsare\b/, /alune|biscuit|snack|chips|telina/],
+  ['sunflower_oil', /ulei de floarea/], ['olive_oil', /ulei (extra virgin )?de masline|ulei de masline/], ['salt', /\bsare\b/, /alune|biscuit|snack|chips|telina/],
   ['black_pepper', /piper negru/], ['paprika', /\bboia\b/], ['cumin', /chimion|\bcumin/], ['curry', /\bcurry\b/],
-  ['bay_leaf', /dafin/], ['mustard', /mustar/], ['vinegar', /\botet\b/], ['honey', /\bmiere\b/, /turta|biscuit/],
+  ['bay_leaf', /dafin/, /ficat|ton|peste/], ['mustard', /mustar/], ['vinegar', /\botet\b/, /in otet/], ['honey', /\bmiere\b/, /turta|biscuit/],
   ['maple_syrup', /sirop de artar/], ['sugar', /\bzahar\b/, /fara zahar|vanil/], ['cocoa', /cacao/, /ciocolat|baton|biscuit|unt/],
-  ['baking_powder', /praf de copt/], ['vegetable_broth', /supa.*legum|bulion de legume/], ['ginger', /ghimbir/], ['olives', /masline/, /ulei/],
+  ['baking_powder', /praf de copt/], ['vegetable_broth', /supa.*legum|bulion de legume/], ['ginger', /ghimbir/], ['olives', /masline|\bolive\b/, /ulei/],
 ];
 
 function matchIngredient_(name) {
   var p = plain_(name);
+  if (CROCO_SKIP.test(p)) return null;
   for (var i = 0; i < CROCO_RULES.length; i++) {
     var r = CROCO_RULES[i];
     if (r[1].test(p) && !(r[2] && r[2].test(p))) return r[0];
@@ -368,9 +377,17 @@ function matchIngredient_(name) {
   return null;
 }
 
-/** Ambalajul din nume: „500g”, „1 L”, „10 buc”, „kg” (la cântar). → {size, label, byWeight} în g/ml/buc */
+/**
+ * Ambalajul din nume: „500g”, „3x80g” (= 240 g), „1 L”, „10 buc”, „kg” (la cântar).
+ * „calibru 291/360 kg” = mărimea măslinelor, nu greutatea → se vinde la kg.
+ */
 function packOf_(name) {
-  var p = plain_(name).replace(/,/g, '.');
+  var p = plain_(name).replace(/,/g, '.').replace(/\d+\s*\/\s*\d+\s*(?=kg\b)/g, '');
+  var mp = /(\d+)\s*[x*×]\s*(\d+(?:\.\d+)?)\s*(g|gr|ml)\b/.exec(p);
+  if (mp) {
+    var tot = Number(mp[1]) * Number(mp[2]);
+    return { size: tot, label: mp[1] + ' × ' + mp[2] + ' ' + (mp[3] === 'ml' ? 'ml' : 'g'), byWeight: 0 };
+  }
   var m = /(\d+(?:\.\d+)?)\s*(kg|g|gr|ml|l|buc|bucati)\b/.exec(p);
   if (m) {
     var q = Number(m[1]), u = m[2];
